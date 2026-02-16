@@ -2,19 +2,19 @@ import os
 import discord
 from discord.ext import commands
 
-# Load token from Railway environment variable
+# Load bot token from Railway environment variable
 TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Make sure to replace with your allowed role ID
-ALLOWED_ROLE_ID = 123456789012345678  # <-- Put your Discord role ID here as an int
+# Role ID allowed to access templates
+ALLOWED_ROLE_ID = 1472751333286350981  # <-- Your role ID
 
 # Templates dictionary: prefix -> link
 templates = {
-    "$Gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
-    "$Gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
+    "$gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
+    "$gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
     "$maxes": "https://docs.google.com/document/d/1Im6pR2eeGI8R534HO_6tPTOx1va8lcy6/view",
-    "$Gen 4": "https://docs.google.com/document/d/1HnOsvNIIbZW17czsNvwXOzLPcqGjdDxY/view",
-    "$Gen 2": "https://docs.google.com/document/d/1PEchU2wLeB9O_Gu5d619_LF4gzAvsV8F/view",
+    "$gen 4": "https://docs.google.com/document/d/1HnOsvNIIbZW17czsNvwXOzLPcqGjdDxY/view",
+    "$gen 2": "https://docs.google.com/document/d/1PEchU2wLeB9O_Gu5d619_LF4gzAvsV8F/view",
     "$burberry her elixir": "https://docs.google.com/document/d/1HBdeft5grbTDyyQenGY3dJL0XSVDKdDz/view",
     "$gucci guilty pour home toilette": "https://docs.google.com/document/d/1DEEcspmYVGDevUrzQXDB39dcP68x9tRI/view",
     "$gucci guilty pour homme eau de": "https://docs.google.com/document/d/1hDwGZRcoa5saZxgydbBBCAXRDxS7HRW5/view",
@@ -27,46 +27,50 @@ templates = {
 
 # Discord intents
 intents = discord.Intents.default()
-intents.members = True  # Needed to check member roles
-intents.message_content = True  # Needed to read messages
+intents.members = True
+intents.message_content = True
 
 bot = commands.Bot(command_prefix="$", intents=intents)
+
+# Helper function to check role
+def has_allowed_role(member):
+    return any(role.id == ALLOWED_ROLE_ID for role in member.roles)
 
 @bot.event
 async def on_ready():
     print(f"Bot logged in as {bot.user}")
 
 @bot.command()
-async def template(ctx, *, name):
-    """Send template link if user has the allowed role"""
-    member = ctx.author
-    template_link = templates.get(name)
-
-    if not template_link:
-        await ctx.send("Template not found.")
-        return
-
-    # Check if user has the allowed role
-    role = discord.utils.get(member.roles, id=ALLOWED_ROLE_ID)
-    if role:
-        await ctx.send(f"Here’s your template link: {template_link}")
-    else:
-        await ctx.send("You do not have permission to access this template.")
-
-@bot.command()
 async def receipts(ctx):
     """DM the user a list of all available prefixes"""
     member = ctx.author
-    role = discord.utils.get(member.roles, id=ALLOWED_ROLE_ID)
-
-    if role:
-        prefixes = "\n".join(templates.keys())
+    if has_allowed_role(member):
+        prefixes_text = "\n".join(templates.keys())
         try:
-            await member.send(f"Here are all available templates:\n{prefixes}")
-            await ctx.send(f"{member.mention}, I’ve DM’d you the list of available templates!")
+            await member.send(f"Here are all available templates:\n{prefixes_text}")
+            await ctx.send(f"{member.mention}, I’ve DM’d you the list of templates!")
         except discord.Forbidden:
             await ctx.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
     else:
-        await ctx.send("You do not have permission to view the templates list.")
+        await ctx.send("receipt/gen access denied")
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return  # Ignore bot messages
+
+    content = message.content.lower()  # Make prefix check case-insensitive
+    member = message.author
+
+    if content in templates:
+        if has_allowed_role(member):
+            try:
+                await member.send(f"Here’s your template link for {content}:\n{templates[content]}")
+            except discord.Forbidden:
+                await message.channel.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
+        else:
+            await message.channel.send("receipt/gen access denied")
+
+    await bot.process_commands(message)  # Make sure commands like $receipts still work
 
 bot.run(TOKEN)
