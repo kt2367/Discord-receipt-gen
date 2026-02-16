@@ -1,15 +1,16 @@
-import os
 import discord
 from discord.ext import commands
+import os
 
-# Load bot token from Railway environment variable
-TOKEN = os.getenv("DISCORD_TOKEN")
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="$", intents=intents)
 
-# Role ID allowed to access templates
-ALLOWED_ROLE_ID = 1472751333286350981  # <-- Your role ID
+# Allowed role ID
+ALLOWED_ROLE_ID = 1472751333286350981
 
-# Templates dictionary: prefix -> link
-templates = {
+# Prefixes and corresponding view-only links
+template_links = {
     "$gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
     "$gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
     "$maxes": "https://docs.google.com/document/d/1Im6pR2eeGI8R534HO_6tPTOx1va8lcy6/view",
@@ -21,57 +22,52 @@ templates = {
     "$good girl floral vanilla": "https://docs.google.com/document/d/1sONH0wNcsFCnCE5Mn4qPWYUwsVaz3m0e/view",
     "$creed virgin island": "https://drive.google.com/file/d/1mVFtQnJM_mkKD3Bn5N4Wa3jmQz8f8ETl/view",
     "$dior sauvage pafum": "https://docs.google.com/document/d/1j9oeoxg8Rdk-ipIE2f0h0nc0pB7UuNGw/view",
+    "$dior sauvage elixir": "https://docs.google.com/document/d/1lItxoHzfhTzjKmXWufkfvHC9N97_w6rt/view",
     "$tom ford tobacco vanille": "https://docs.google.com/document/d/1_YSwRXVqKj-4Sg9IXqRuZsAHonQLTnIB/view",
-    "$chanel bleu de parfum": "https://docs.google.com/document/d/1hgOok9BJ93-6o-Dyz0ajDKmqC_I-Obw7/view"
+    "$chanel bleu de parfum": "https://docs.google.com/document/d/1hgOok9BJ93-6o-Dyz0ajDKmqC_I-Obw7/view",
+    "$baccarat rouge 540": "https://docs.google.com/document/d/19jF2xAPoJyusTEZiYCnoJQ4WbDBsv_x3/view",
+    "$creed aventus": "https://docs.google.com/document/d/1Bo_RX-gkINMAuzFma3AfnZYnL1wtTLXn/view",
+    "$valentino born in roma intense": "https://docs.google.com/document/d/19clwFpnzrkjiViqbvmcvC43cYJg4KORN/view",
+    "$ysl libre eau de parfum": "https://docs.google.com/document/d/1bTYQL__VvgS2VX_qosal2joGT95hhsM2/view",
+    "$ysl black opium eau de parfum": "https://docs.google.com/document/d/1O4OamiTa2zZP8gByh1TkADvRb572XjFx/view",
+    "$carolina herrara very good girl eau de parfum": "https://docs.google.com/document/d/17Y2SqOu8WL3VrKo7OpoXKm-mV3v_msIz/view",
+    "$versace eros parfum": "https://docs.google.com/document/d/1dQ75K5xYoAb-eRp6hYPGI-4FSNaX685z/view",
+    "$ysl y eau de parfum": "https://docs.google.com/document/d/1DEOSa8v8o_l9kgktaSSEm7Fr9SJDfWNf/view",
+    "$valentino born in roma eau de toilette": "https://docs.google.com/document/d/1xyg6DUid9TGHa3oxZHKvop84ZNZbaOx1/view",
+    "$lv imagination": "https://docs.google.com/document/d/1nMSFDW3rj4pfRovPEYhHMeaisHxtrSaz/view",
+    "$rabanne 1 million eau de toilette": "https://docs.google.com/document/d/1gOidbpQTQocT2K6a-Krs2cWaoCmE4OyA/view",
+    "$xerjoff erba pura": "https://docs.google.com/document/d/1JZG_458O6vQFWsJ1SnTCyOFjpiEWoDmY/view",
+    "$jpg le male elixir": "https://docs.google.com/document/d/1MToEn7BbVIL77KVujmPL2FqQSiVNAhGL/view",
+    "$lv pacific chill": "https://docs.google.com/document/d/1De9c0n27XdpQDzDf9Iz3VblJB5_ffW7W/view"
 }
-
-# Discord intents
-intents = discord.Intents.default()
-intents.members = True  # Needed to check roles
-intents.message_content = True  # Needed to read messages
-
-bot = commands.Bot(command_prefix="$", intents=intents)
-
-# Helper function to check role
-def has_allowed_role(member):
-    return any(role.id == ALLOWED_ROLE_ID for role in member.roles)
 
 @bot.event
 async def on_ready():
-    print(f"Bot logged in as {bot.user}")
+    print(f"Logged in as {bot.user}")
 
+def has_role(user):
+    """Check if user has the allowed role"""
+    return any(role.id == ALLOWED_ROLE_ID for role in user.roles)
+
+# $receipts command to DM all available prefixes
 @bot.command()
 async def receipts(ctx):
-    """DM the user a list of all available prefixes"""
-    member = ctx.author
-    if has_allowed_role(member):
-        prefixes_text = "\n".join(templates.keys())
-        try:
-            await member.send(f"Here are all available templates:\n{prefixes_text}")
-            await ctx.send(f"{member.mention}, success! Check your DMs.")
-        except discord.Forbidden:
-            await ctx.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
-    else:
+    if not has_role(ctx.author):
         await ctx.send("receipt/gen access denied")
+        return
+    prefixes = "\n".join(template_links.keys())
+    await ctx.author.send(f"Available templates:\n{prefixes}")
+    await ctx.send("Success! Check your DMs.")
 
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return  # Ignore bot messages
+# Commands for each individual template prefix
+for prefix, link in template_links.items():
+    cmd_name = prefix[1:].replace(" ", "_")  # remove $ and spaces for command name
+    async def send_template(ctx, link=link):
+        if not has_role(ctx.author):
+            await ctx.send("receipt/gen access denied")
+            return
+        await ctx.author.send(link)
+        await ctx.send("Success! Check your DMs.")
+    bot.command(name=cmd_name)(send_template)
 
-    member = message.author
-    content = message.content.lower()  # Make prefix check case-insensitive
-
-    if content in templates:
-        if has_allowed_role(member):
-            try:
-                await member.send(f"Here’s your template link for {content}:\n{templates[content]}")
-                await message.channel.send(f"{member.mention}, success! Check your DMs.")
-            except discord.Forbidden:
-                await message.channel.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
-        else:
-            await message.channel.send("receipt/gen access denied")
-
-    await bot.process_commands(message)  # Keep other commands like $receipts working
-
-bot.run(TOKEN)
+bot.run(os.getenv("DISCORD_TOKEN"))
