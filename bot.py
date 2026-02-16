@@ -9,7 +9,7 @@ bot = commands.Bot(command_prefix="$", intents=intents)
 # Allowed role ID
 ALLOWED_ROLE_ID = 1472751333286350981
 
-# Prefixes and corresponding view-only links
+# Prefixes and their view-only links
 template_links = {
     "$gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
     "$gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
@@ -49,7 +49,7 @@ def has_role(user):
     """Check if user has the allowed role"""
     return any(role.id == ALLOWED_ROLE_ID for role in user.roles)
 
-# $receipts command to DM all available prefixes
+# $receipts command to list all prefixes
 @bot.command()
 async def receipts(ctx):
     if not has_role(ctx.author):
@@ -59,15 +59,20 @@ async def receipts(ctx):
     await ctx.author.send(f"Available templates:\n{prefixes}")
     await ctx.send("Success! Check your DMs.")
 
-# Commands for each individual template prefix
-for prefix, link in template_links.items():
-    cmd_name = prefix[1:].replace(" ", "_")  # remove $ and spaces for command name
-    async def send_template(ctx, link=link):
+# Factory function to create individual prefix commands
+def create_template_command(prefix, link):
+    cmd_name = prefix[1:].replace(" ", "_")  # remove $ and spaces
+    @bot.command(name=cmd_name)
+    async def command(ctx):
         if not has_role(ctx.author):
             await ctx.send("receipt/gen access denied")
             return
         await ctx.author.send(link)
         await ctx.send("Success! Check your DMs.")
-    bot.command(name=cmd_name)(send_template)
+    return command
+
+# Generate all prefix commands
+for prefix, link in template_links.items():
+    create_template_command(prefix, link)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
