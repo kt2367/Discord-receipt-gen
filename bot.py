@@ -6,10 +6,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="$", intents=intents)
 
-# Allowed role ID
 ALLOWED_ROLE_ID = 1472751333286350981
 
-# Prefixes and their view-only links
+# All prefixes and links
 template_links = {
     "$gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
     "$gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
@@ -46,10 +45,9 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
 def has_role(user):
-    """Check if user has the allowed role"""
     return any(role.id == ALLOWED_ROLE_ID for role in user.roles)
 
-# $receipts command to list all prefixes
+# $receipts command
 @bot.command()
 async def receipts(ctx):
     if not has_role(ctx.author):
@@ -59,20 +57,25 @@ async def receipts(ctx):
     await ctx.author.send(f"Available templates:\n{prefixes}")
     await ctx.send("Success! Check your DMs.")
 
-# Factory function to create individual prefix commands
-def create_template_command(prefix, link):
-    cmd_name = prefix[1:].replace(" ", "_")  # remove $ and spaces
-    @bot.command(name=cmd_name)
-    async def command(ctx):
-        if not has_role(ctx.author):
-            await ctx.send("receipt/gen access denied")
-            return
-        await ctx.author.send(link)
-        await ctx.send("Success! Check your DMs.")
-    return command
+# Listen to all messages starting with $ and check if it's a template command
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
 
-# Generate all prefix commands
-for prefix, link in template_links.items():
-    create_template_command(prefix, link)
+    if not message.content.startswith("$"):
+        return
+
+    if not has_role(message.author):
+        await message.channel.send("receipt/gen access denied")
+        return
+
+    content = message.content.lower()
+    if content in template_links:
+        await message.author.send(template_links[content])
+        await message.channel.send("Success! Check your DMs.")
+        return
+
+    await bot.process_commands(message)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
