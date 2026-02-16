@@ -114,16 +114,17 @@ async def receipts(ctx):
 async def on_message(message):
     if message.author.bot:
         return
-    if not message.content.startswith("$"):
-        return
-    if not has_role(message.author):
-        await message.channel.send("receipt/gen access denied")
-        return
-    content = message.content.lower()
-    if content in template_links:
-        await message.author.send(template_links[content])
-        await message.channel.send("Success! Check your DMs.")
-        return
+
+    if message.content.startswith("$"):
+        if not has_role(message.author):
+            await message.channel.send("receipt/gen access denied")
+        else:
+            content = message.content.lower()
+            if content in template_links:
+                await message.author.send(template_links[content])
+                await message.channel.send("Success! Check your DMs.")
+
+    # Always process commands like $receipts
     await bot.process_commands(message)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
