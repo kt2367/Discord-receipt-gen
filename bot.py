@@ -27,8 +27,8 @@ templates = {
 
 # Discord intents
 intents = discord.Intents.default()
-intents.members = True
-intents.message_content = True
+intents.members = True  # Needed to check roles
+intents.message_content = True  # Needed to read messages
 
 bot = commands.Bot(command_prefix="$", intents=intents)
 
@@ -48,7 +48,7 @@ async def receipts(ctx):
         prefixes_text = "\n".join(templates.keys())
         try:
             await member.send(f"Here are all available templates:\n{prefixes_text}")
-            await ctx.send(f"{member.mention}, I’ve DM’d you the list of templates!")
+            await ctx.send(f"{member.mention}, success! Check your DMs.")
         except discord.Forbidden:
             await ctx.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
     else:
@@ -59,18 +59,19 @@ async def on_message(message):
     if message.author.bot:
         return  # Ignore bot messages
 
-    content = message.content.lower()  # Make prefix check case-insensitive
     member = message.author
+    content = message.content.lower()  # Make prefix check case-insensitive
 
     if content in templates:
         if has_allowed_role(member):
             try:
                 await member.send(f"Here’s your template link for {content}:\n{templates[content]}")
+                await message.channel.send(f"{member.mention}, success! Check your DMs.")
             except discord.Forbidden:
                 await message.channel.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
         else:
             await message.channel.send("receipt/gen access denied")
 
-    await bot.process_commands(message)  # Make sure commands like $receipts still work
+    await bot.process_commands(message)  # Keep other commands like $receipts working
 
 bot.run(TOKEN)
