@@ -77,19 +77,6 @@ template_links = {
     "$jpg gaultier²": "https://docs.google.com/document/d/1UH6SZWqGVXek2-AZgFCvKpcOYsdl3b7l/view",
     "$jpg le beau": "https://docs.google.com/document/d/14trotWq7haf7v4LyLmxoNG4Dx09PlJYB/view",
     "$valentino uomo born in roma the gold": "https://docs.google.com/document/d/1vE_TkZN7aItBuwruJxO1nPDRSZczAWF2/view",
-    "$valentino uomo born in roma green stravaganza": "https://docs.google.com/document/d/1pntMpeglHKm-BNFgzSrohh65XcaajuyV/view",
-    "$rabanne invictus eau de toilette": "https://docs.google.com/document/d/1VNI95MOFWAI8tZoqNA5wZvYgnd4Eirg7/view",
-    "$lancome la via est belle": "https://docs.google.com/document/d/14s9SUhVXeeS7P5Eb1x57UQ2TceLlfNDW/view",
-    "$chanel n°5": "https://docs.google.com/document/d/16K805hE-ZQcb_GwoA2nxXcqToS5TkCUq/view",
-    "$armani stronger with you intensely": "https://docs.google.com/document/d/1ZfHJ67SOgtgU-Y13enfNRipEgj0Cfav7/view",
-    "$armani my way": "https://docs.google.com/document/d/1hTicol5fTutN0KMOj0hs1KxMu30C3MkQ/view",
-    "$byredo rose of no man's land": "https://docs.google.com/document/d/1WjFN-TaQkpXjTL-eAbIXuD4-xJ1rV3Hz/view",
-    "$tom ford eau dombre leather": "https://docs.google.com/document/d/1kSQRCW-jk2VwZgLG6XWp9jumEFuOj9C2/view",
-    "$tom ford bitter peach": "https://docs.google.com/document/d/1EJ7onm88rHexUuKL2CdO2waCP4W9u0H6/view",
-    "$tom ford rose prick": "https://docs.google.com/document/d/1TD-4awsTSZJSoew_cShLdzqEKvMOBX3T/view",
-    "$tom ford oud wood": "https://docs.google.com/document/d/1wgjsa_0JM6GiOD8Ysq9FR6OX5mLuBOwf/view",
-    "$tom ford black orchid": "https://docs.google.com/document/d/18wGWIbLFRnqOuoDDgi7QU7VhSZTLDXX_/view",
-    "$maison francis grand soir": "https://docs.google.com/document/d/15QX8aZit256Q2QYoeYUtyJAqd3fYTmve/view",
     "$valentino donna born in roma green": "https://docs.google.com/document/d/1bn6xNrfqpvQLzWQc4mRUOxth9H8NBVDB/view"
 }
 
@@ -100,14 +87,23 @@ async def on_ready():
 def has_role(user):
     return any(role.id == ALLOWED_ROLE_ID for role in user.roles)
 
-# $receipts command
+# $receipts command with embed
 @bot.command()
 async def receipts(ctx):
     if not has_role(ctx.author):
         await ctx.send("receipt/gen access denied")
         return
-    prefixes = "\n".join(template_links.keys())
-    await ctx.author.send(f"Available templates:\n{prefixes}")
+
+    embed = discord.Embed(
+        title="Available Templates",
+        description="Click a template name to open the document",
+        color=0x00FFAA
+    )
+
+    for name, link in sorted(template_links.items()):
+        embed.add_field(name=name, value=f"[Open Link]({link})", inline=False)
+
+    await ctx.author.send(embed=embed)
     await ctx.send("Success! Check your DMs.")
 
 @bot.event
@@ -115,16 +111,15 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    if message.content.startswith("$"):
+    # Send templates in DMs if user has role
+    content = message.content.lower()
+    if content in template_links:
         if not has_role(message.author):
             await message.channel.send("receipt/gen access denied")
         else:
-            content = message.content.lower()
-            if content in template_links:
-                await message.author.send(template_links[content])
-                await message.channel.send("Success! Check your DMs.")
+            await message.author.send(template_links[content])
+            await message.channel.send("Success! Check your DMs.")
 
-    # Always process commands like $receipts
     await bot.process_commands(message)
 
 bot.run(os.getenv("DISCORD_TOKEN"))
