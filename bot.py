@@ -1,13 +1,14 @@
+import os
 import discord
 from discord.ext import commands
 
-# Replace with your bot token
-TOKEN = "YOUR_BOT_TOKEN_HERE"
+# Load token from Railway environment variable
+TOKEN = os.getenv("DISCORD_TOKEN")
 
-# Replace with your role ID that can access templates
-ALLOWED_ROLE_ID = 123456789012345678  # <-- put your role ID here
+# Make sure to replace with your allowed role ID
+ALLOWED_ROLE_ID = 123456789012345678  # <-- Put your Discord role ID here as an int
 
-# Template links
+# Templates dictionary: prefix -> link
 templates = {
     "$Gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
     "$Gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
@@ -24,14 +25,16 @@ templates = {
     "$chanel bleu de parfum": "https://docs.google.com/document/d/1hgOok9BJ93-6o-Dyz0ajDKmqC_I-Obw7/view"
 }
 
+# Discord intents
 intents = discord.Intents.default()
-intents.members = True  # Needed to check roles
+intents.members = True  # Needed to check member roles
+intents.message_content = True  # Needed to read messages
 
 bot = commands.Bot(command_prefix="$", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'Logged in as {bot.user}')
+    print(f"Bot logged in as {bot.user}")
 
 @bot.command()
 async def template(ctx, *, name):
@@ -43,6 +46,7 @@ async def template(ctx, *, name):
         await ctx.send("Template not found.")
         return
 
+    # Check if user has the allowed role
     role = discord.utils.get(member.roles, id=ALLOWED_ROLE_ID)
     if role:
         await ctx.send(f"Here’s your template link: {template_link}")
@@ -51,18 +55,18 @@ async def template(ctx, *, name):
 
 @bot.command()
 async def receipts(ctx):
-    """DM the user a list of all template prefixes"""
+    """DM the user a list of all available prefixes"""
     member = ctx.author
     role = discord.utils.get(member.roles, id=ALLOWED_ROLE_ID)
 
     if role:
         prefixes = "\n".join(templates.keys())
         try:
-            await member.send(f"Here are the available templates:\n{prefixes}")
+            await member.send(f"Here are all available templates:\n{prefixes}")
             await ctx.send(f"{member.mention}, I’ve DM’d you the list of available templates!")
         except discord.Forbidden:
-            await ctx.send(f"{member.mention}, I cannot DM you. Please check your privacy settings.")
+            await ctx.send(f"{member.mention}, I cannot DM you. Check your privacy settings.")
     else:
-        await ctx.send("You do not have permission to view the available templates.")
+        await ctx.send("You do not have permission to view the templates list.")
 
 bot.run(TOKEN)
