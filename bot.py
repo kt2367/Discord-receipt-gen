@@ -49,7 +49,6 @@ brand_from = {
 user_emails = {}
 
 intents = discord.Intents.default()
-intents.message_content = True
 intents.members = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
@@ -102,7 +101,7 @@ async def assign_role(interaction: discord.Interaction, member: discord.Member, 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class EmailModal(ui.Modal, title="Hook Your Email"):
-    email = ui.TextInput(label="Enter your email for receipts", style=discord.TextStyle.short, required=True)
+    email = ui.TextInput(label="Enter your email for receipts", style=discord.TextStyle.long, required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
         user_emails[interaction.user.id] = self.email.value
@@ -138,15 +137,24 @@ class BrandView(ui.View):
         super().__init__(timeout=300)
         self.add_item(BrandSelect())
 
+@tree.command(name="generate", description="Generate a receipt (role required)")
+async def generate(interaction: discord.Interaction):
+    if not any(r.id == ROLE_ID for r in interaction.user.roles):
+        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    embed = Embed(title="Select Brand", description="Pick from the dropdown below.", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, view=BrandView())
+
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand, user_id):
         self.brand = brand
         self.user_id = user_id
         super().__init__()
-        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.short, required=True)
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True)
         self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True)
         self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False)
-        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.short, required=False)
+        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False)
 
     async def on_submit(self, interaction: discord.Interaction):
         email = user_emails.get(self.user_id)
