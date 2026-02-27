@@ -127,8 +127,8 @@ class BrandSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
-        await interaction.response.defer(ephemeral=True)  # This fixes the "failed" error
-        await interaction.message.delete()  # Clean up dropdown
+        await interaction.response.defer(ephemeral=True)
+        await interaction.message.delete()  # Clean up dropdown message
         modal = GenerateModal(brand=brand, user_id=interaction.user.id)
         await interaction.followup.send_modal(modal)
 
