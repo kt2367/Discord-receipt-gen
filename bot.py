@@ -10,8 +10,8 @@ from email.mime.text import MIMEText
 
 # === CONFIG FROM ENV VARS ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # AppleReceipts@outlook.com
-APP_PASSWORD = os.getenv("APP_PASSWORD")  # RoseThea81
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # yourgmail@gmail.com
+APP_PASSWORD = os.getenv("APP_PASSWORD")  # 16-char Gmail app password
 
 if not all([BOT_TOKEN, SENDER_EMAIL, APP_PASSWORD]):
     print("Missing BOT_TOKEN, SENDER_EMAIL, or APP_PASSWORD!")
@@ -27,6 +27,23 @@ BRANDS = [
     'Nike', 'Adidas', 'Lululemon', 'Lanvin', 'Creed',
     'Baccarat', 'Sephora', 'Apple'
 ]
+
+# Brand-specific From settings for realistic sender line
+brand_from = {
+    'Cartier': {"display": "Cartier", "from_email": "concierge@cartier.com"},
+    'Nike': {"display": "Nike", "from_email": "orders@nike.com"},
+    'Adidas': {"display": "adidas", "from_email": "service@adidas.com"},
+    'Sephora': {"display": "Sephora", "from_email": "customerservice@sephora.com"},
+    'Lululemon': {"display": "lululemon athletica", "from_email": "support@lululemon.com"},
+    'Apple': {"display": "Apple Store", "from_email": "no-reply@apple.com"},
+    'Balenciaga': {"display": "Balenciaga", "from_email": "contact@balenciaga.com"},
+    'Creed': {"display": "Creed Boutique", "from_email": "info@creedboutique.com"},
+    'Lanvin': {"display": "Lanvin", "from_email": "contact@lanvin.com"},
+    'Baccarat': {"display": "Baccarat", "from_email": "service@baccarat.com"},
+    'Denim Tears': {"display": "Denim Tears", "from_email": "support@denimtears.com"},
+    'Ksubi': {"display": "Ksubi", "from_email": "hello@ksubi.com"},
+    'Sp5der': {"display": "Sp5der", "from_email": "support@sp5der.com"},
+}
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -79,7 +96,7 @@ async def setup(interaction: discord.Interaction):
     embed = Embed(title="Starting Setup", description="Check your DMs!", color=Colour.blue())
     await interaction.response.send_message(embed=embed, ephemeral=True)
     await interaction.user.send(embed=Embed(title="Setup Started", description="Answer the questions below.", color=Colour.blue()))
-    await start_setup(interaction.user, None)  # We'll ask for email in DM if not provided
+    await start_setup(interaction.user, None)
 
 async def start_setup(user: discord.User, email: str = None):
     dm = await user.create_dm()
@@ -102,27 +119,29 @@ async def start_setup(user: discord.User, email: str = None):
             await dm.send(embed=embed)
             return
 
-        embed = Embed(title="Item Name", description="What item?", color=Colour.blue())
+        info = brand_from.get(brand, {"display": brand, "from_email": f"no-reply@{brand.lower()}.com"})
+
+        embed = Embed(title=f"{info['display']} Item", description="What item?", color=Colour.blue())
         await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         item = msg.content.strip()
 
-        embed = Embed(title="Price", description="Price in USD?", color=Colour.blue())
+        embed = Embed(title=f"{info['display']} Price", description="Price in USD?", color=Colour.blue())
         await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         price = float(msg.content.strip())
 
-        embed = Embed(title="Quantity", description="Quantity? (enter for 1)", color=Colour.blue())
+        embed = Embed(title=f"{info['display']} Quantity", description="Quantity? (enter for 1)", color=Colour.blue())
         await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         quantity = int(msg.content.strip() or 1)
 
-        embed = Embed(title="Shipping", description="Shipping address? (optional, enter for N/A)", color=Colour.blue())
+        embed = Embed(title=f"{info['display']} Shipping", description="Shipping address? (optional, enter for N/A)", color=Colour.blue())
         await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         shipping = msg.content.strip() or "N/A"
 
-        embed = Embed(title="Generating...", description="Sending branded receipt to {email}...", color=Colour.orange())
+        embed = Embed(title="Generating...", description=f"Sending branded receipt to {email}...", color=Colour.orange())
         await dm.send(embed=embed)
 
         order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
@@ -131,40 +150,32 @@ async def start_setup(user: discord.User, email: str = None):
         tax = subtotal * 0.08
         total = subtotal + tax
 
-        # HTML receipt body
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
-        <h2 style="color:#0066cc;">{brand} Order Confirmation</h2>
-        <p><strong>Order ID:</strong> {order_id}<br>
-        <strong>Date:</strong> {today}<br>
-        <strong>Billed to:</strong> {email}</p>
-        <hr>
-        <p><strong>Item:</strong> {item}<br>
-        <strong>Qty:</strong> {quantity}<br>
-        <strong>Price:</strong> ${price:,.2f}</p>
-        <hr>
-        <p><strong>Subtotal:</strong> ${subtotal:,.2f}<br>
-        <strong>Tax (8%):</strong> ${tax:,.2f}<br>
-        <strong>Total:</strong> ${total:,.2f}</p>
-        <p><strong>Shipping:</strong> {shipping}</p>
-        <hr>
-        <p style="font-size:12px; color:#666;">Thank you for shopping with {brand}! Keep this for your records.</p>
+        <h2 style="color:#000;">{brand} Order Confirmation</h2>
+        <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
+        <p>Item: {item} x{quantity} - ${price:,.2f}</p>
+        <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
+        <p>Shipping: {shipping}</p>
+        <p>Thank you for shopping with {brand}!</p>
         </body>
         </html>
         """
 
         msg = MIMEMultipart("alternative")
-        msg['From'] = SENDER_EMAIL
+        msg['From'] = f"{info['display']} <{info['from_email']}>"
+        msg['Reply-To'] = f"support@{brand.lower()}.com"
         msg['To'] = email
         msg['Subject'] = f"Your {brand} Order Confirmation"
+        msg['Message-ID'] = f"<{random.randint(1000000000000000000,9999999999999999999)}@{brand.lower()}.com>"
 
         plain_text = f"Order ID: {order_id}\nItem: {item}\nTotal: ${total:,.2f}\nThank you!"
         msg.attach(MIMEText(plain_text, 'plain'))
         msg.attach(MIMEText(html_body, 'html'))
 
         try:
-            server = smtplib.SMTP('smtp-mail.outlook.com', 587, timeout=30)
+            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=30)
             server.ehlo()
             server.starttls()
             server.ehlo()
@@ -174,9 +185,9 @@ async def start_setup(user: discord.User, email: str = None):
             embed = Embed(title="Success!", description=f"Receipt sent to {email}! Check inbox/spam.", color=Colour.green())
             await dm.send(embed=embed)
         except Exception as e:
-            embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Outlook spam, creds, or try again.", color=Colour.red())
+            embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
             await dm.send(embed=embed)
-            print(f"Email error: {str(e)}")  # Logs in Railway
+            print(f"SMTP full error: {str(e)}")  # Shows in Railway logs
 
     except asyncio.TimeoutError:
         embed = Embed(title="Timed Out", description="Run /setup again.", color=Colour.red())
