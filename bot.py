@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands, ui, Embed, Colour
 import datetime
@@ -101,7 +100,7 @@ async def assign_role(interaction: discord.Interaction, member: discord.Member, 
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-class EmailModal(ui.Modal, title="Email Setup"):
+class EmailModal(ui.Modal, title="Email Hook"):
     email = ui.TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -121,26 +120,50 @@ async def setup(interaction: discord.Interaction):
         return
     await interaction.response.send_modal(EmailModal())
 
-class GenerateModal(ui.Modal, title="Generate Receipt"):
-    brand = ui.TextInput(label="Brand", style=discord.TextStyle.short, required=True, placeholder=f"Enter one: {', '.join(BRANDS)}")
-    item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
-    price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
-    quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
-    shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
+class BrandSelect(ui.Select):
+    def __init__(self):
+        options = [discord.SelectOption(label=brand) for brand in BRANDS]
+        super().__init__(placeholder="Select a brand...", options=options, min_values=1, max_values=1)
+
+    async def callback(self, interaction: discord.Interaction):
+        brand = self.values[0]
+        await interaction.response.defer(ephemeral=True)
+        await interaction.message.delete()  # Clean up select message
+        modal = GenerateModal(brand=brand, user_id=interaction.user.id)
+        await interaction.followup.send_modal(modal)
+
+class BrandView(ui.View):
+    def __init__(self):
+        super().__init__(timeout=300)
+        self.add_item(BrandSelect())
+
+@tree.command(name="generate", description="Generate a receipt (role required)")
+async def generate(interaction: discord.Interaction):
+    if not any(r.id == ROLE_ID for r in interaction.user.roles):
+        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    embed = Embed(title="Select Brand", description="Choose from the dropdown below (private to you).", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, view=BrandView(), ephemeral=True)
+
+class GenerateModal(ui.Modal, title="Receipt Details"):
+    def __init__(self, brand, user_id):
+        self.brand = brand
+        self.user_id = user_id
+        super().__init__()
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
+        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
+        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
+        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
 
     async def on_submit(self, interaction: discord.Interaction):
-        email = user_emails.get(interaction.user.id)
+        email = user_emails.get(self.user_id)
         if not email:
             embed = Embed(title="No Email Hooked", description="Run /setup first to hook your email!", color=Colour.red())
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        brand = self.brand.value.strip().title()
-        if brand not in BRANDS:
-            embed = Embed(title="Invalid Brand", description=f"Brand must be one of: {', '.join(BRANDS)}. Retry.", color=Colour.red())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-
+        brand = self.brand
         try:
             price = float(self.price.value.strip())
             quantity = int(self.quantity.value.strip() or 1)
