@@ -28,7 +28,7 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand-specific From settings for realistic sender line
+# Brand-specific From settings
 brand_from = {
     'Cartier': {"display": "Cartier", "from_email": "concierge@cartier.com"},
     'Nike': {"display": "Nike", "from_email": "orders@nike.com"},
@@ -45,6 +45,9 @@ brand_from = {
     'Sp5der': {"display": "Sp5der", "from_email": "support@sp5der.com"},
 }
 
+# In-memory storage for emails (user_id: email) - resets on restart
+user_emails = {}
+
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
@@ -56,147 +59,154 @@ async def on_ready():
     await tree.sync()
     print(f"Bot online as {client.user} 🚀 - Ready for commands!")
 
+def parse_duration(dur: str) -> int:
+    if not dur or not dur[0].isdigit():
+        return 0
+    num = int(''.join(filter(str.isdigit, dur)))
+    unit = dur.lower()[-2:] if dur.lower().endswith(('mo', 'wk')) else dur.lower()[-1]
+    if unit in ['s', 'sec']: return num
+    if unit in ['m', 'min']: return num * 60
+    if unit in ['h', 'hr']: return num * 3600
+    if unit == 'd': return num * 86400
+    if unit in ['w', 'wk']: return num * 604800
+    if unit in ['mo', 'mth']: return num * 2592000
+    return 0
+
+async def remove_role_after_delay(member: discord.Member, role: discord.Role, seconds: int):
+    await asyncio.sleep(seconds)
+    await member.remove_roles(role)
+    print(f"Removed role {role.name} from {member} after {seconds} seconds")
+
 @tree.command(name="role", description="Give temp role (admin only)")
 @app_commands.describe(member="User", duration="e.g. 1d 2w 3m")
 @app_commands.checks.has_permissions(administrator=True)
 async def assign_role(interaction: discord.Interaction, member: discord.Member, duration: str):
+    if any(r.id == ROLE_ID for r in member.roles):
+        embed = Embed(title="Error", description=f"{member.mention} already has the role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
     role = interaction.guild.get_role(ROLE_ID)
     if not role:
         embed = Embed(title="Error", description="Role not found!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-
     await member.add_roles(role)
+    seconds = parse_duration(duration)
+    if seconds > 0:
+        asyncio.create_task(remove_role_after_delay(member, role, seconds))
     embed = Embed(
         title="Role Assigned",
-        description=f"Gave {role.name} to {member.mention} for {duration} (no auto-remove yet)",
+        description=f"Gave {role.name} to {member.mention} for {duration} (auto-remove after time)",
         color=Colour.green()
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-class EmailModal(ui.Modal, title="Enter Your Email"):
-    email = ui.TextInput(label="Email for receipts", style=discord.TextStyle.short, required=True)
+class EmailModal(ui.Modal, title="Hook Your Email"):
+    email = ui.TextInput(label="Enter your email for receipts", style=discord.TextStyle.short, required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
+        user_emails[interaction.user.id] = self.email.value
         embed = Embed(
-            title="Email Received",
-            description=f"Using {self.email.value} for this receipt.\nStarting setup in DMs...",
-            color=Colour.blue()
+            title="Email Hooked",
+            description=f"Email {self.email.value} saved to your user! Use /generate to create receipts.",
+            color=Colour.green()
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
-        await start_setup(interaction.user, self.email.value)
 
-@tree.command(name="setup", description="Start receipt generator (role required)")
+@tree.command(name="setup", description="Hook your email to your user (role required)")
 async def setup(interaction: discord.Interaction):
     if not any(r.id == ROLE_ID for r in interaction.user.roles):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
+    await interaction.response.send_modal(EmailModal())
 
-    embed = Embed(title="Starting Setup", description="Check your DMs!", color=Colour.blue())
-    await interaction.response.send_message(embed=embed, ephemeral=True)
-    await interaction.user.send(embed=Embed(title="Setup Started", description="Answer the questions below.", color=Colour.blue()))
-    await start_setup(interaction.user, None)
+class GenerateModal(ui.Modal, title="Generate Receipt"):
+    brand = ui.TextInput(label="Brand (e.g. Apple)", style=discord.TextStyle.short, required=True)
+    item = ui.TextInput(label="Item name", style=discord.TextStyle.short, required=True)
+    price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True)
+    quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False)
+    shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.short, required=False)
 
-async def start_setup(user: discord.User, email: str = None):
-    dm = await user.create_dm()
-
-    try:
+    async def on_submit(self, interaction: discord.Interaction):
+        email = user_emails.get(interaction.user.id)
         if not email:
-            embed = Embed(title="Email Needed", description="What's your email to send the receipt to?", color=Colour.orange())
-            await dm.send(embed=embed)
-            msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
-            email = msg.content.strip()
-            embed = Embed(title="Email Saved", description=f"Using {email} for this receipt.", color=Colour.green())
-            await dm.send(embed=embed)
-
-        embed = Embed(title="Pick Brand", description=f"Available: {', '.join(BRANDS)}\nReply with one.", color=Colour.blue())
-        await dm.send(embed=embed)
-        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
-        brand = msg.content.strip().title()
-        if brand not in BRANDS:
-            embed = Embed(title="Invalid Brand", description="Try again with /setup.", color=Colour.red())
-            await dm.send(embed=embed)
+            embed = Embed(title="No Email Hooked", description="Run /setup first to hook your email!", color=Colour.red())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        info = brand_from.get(brand, {"display": brand, "from_email": f"no-reply@{brand.lower()}.com"})
-
-        embed = Embed(title=f"{info['display']} Item", description="What item?", color=Colour.blue())
-        await dm.send(embed=embed)
-        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
-        item = msg.content.strip()
-
-        embed = Embed(title=f"{info['display']} Price", description="Price in USD?", color=Colour.blue())
-        await dm.send(embed=embed)
-        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
-        price = float(msg.content.strip())
-
-        embed = Embed(title=f"{info['display']} Quantity", description="Quantity? (enter for 1)", color=Colour.blue())
-        await dm.send(embed=embed)
-        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
-        quantity = int(msg.content.strip() or 1)
-
-        embed = Embed(title=f"{info['display']} Shipping", description="Shipping address? (optional, enter for N/A)", color=Colour.blue())
-        await dm.send(embed=embed)
-        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
-        shipping = msg.content.strip() or "N/A"
-
-        embed = Embed(title="Generating...", description=f"Sending branded receipt to {email}...", color=Colour.orange())
-        await dm.send(embed=embed)
-
-        order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
-        today = datetime.date.today().strftime("%B %d, %Y")
-        subtotal = price * quantity
-        tax = subtotal * 0.08
-        total = subtotal + tax
-
-        html_body = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
-        <h2 style="color:#000;">{brand} Order Confirmation</h2>
-        <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
-        <p>Item: {item} x{quantity} - ${price:,.2f}</p>
-        <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
-        <p>Shipping: {shipping}</p>
-        <p>Thank you for shopping with {brand}!</p>
-        </body>
-        </html>
-        """
-
-        msg = MIMEMultipart("alternative")
-        msg['From'] = f"{info['display']} <{info['from_email']}>"
-        msg['Reply-To'] = f"support@{brand.lower()}.com"
-        msg['To'] = email
-        msg['Subject'] = f"Your {brand} Order Confirmation"
-        msg['Message-ID'] = f"<{random.randint(1000000000000000000,9999999999999999999)}@{brand.lower()}.com>"
-
-        plain_text = f"Order ID: {order_id}\nItem: {item}\nTotal: ${total:,.2f}\nThank you!"
-        msg.attach(MIMEText(plain_text, 'plain'))
-        msg.attach(MIMEText(html_body, 'html'))
+        brand = self.brand.value.strip().title()
+        if brand not in BRANDS:
+            embed = Embed(title="Invalid Brand", description="Pick from the list. Try again.", color=Colour.red())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
 
         try:
-            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=30)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(SENDER_EMAIL, APP_PASSWORD)
-            server.send_message(msg)
-            server.quit()
-            embed = Embed(title="Success!", description=f"Receipt sent to {email}! Check inbox/spam.", color=Colour.green())
-            await dm.send(embed=embed)
-        except Exception as e:
-            embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
-            await dm.send(embed=embed)
-            print(f"SMTP full error: {str(e)}")  # Shows in Railway logs
+            price = float(self.price.value.strip())
+            quantity = int(self.quantity.value.strip() or 1)
+            shipping = self.shipping.value.strip() or "N/A"
+            item = self.item.value.strip()
 
-    except asyncio.TimeoutError:
-        embed = Embed(title="Timed Out", description="Run /setup again.", color=Colour.red())
-        await dm.send(embed=embed)
-    except ValueError:
-        embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
-        await dm.send(embed=embed)
-    except Exception as e:
-        embed = Embed(title="Error", description=f"Something broke: {str(e)}", color=Colour.red())
-        await dm.send(embed=embed)
+            embed = Embed(title="Generating...", description=f"Sending branded receipt to {email}...", color=Colour.orange())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+            order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
+            today = datetime.date.today().strftime("%B %d, %Y")
+            subtotal = price * quantity
+            tax = subtotal * 0.08
+            total = subtotal + tax
+
+            html_body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
+            <h2 style="color:#000;">{brand} Order Confirmation</h2>
+            <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
+            <p>Item: {item} x{quantity} - ${price:,.2f}</p>
+            <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
+            <p>Shipping: {shipping}</p>
+            <p>Thank you for shopping with {brand}!</p>
+            </body>
+            </html>
+            """
+
+            info = brand_from.get(brand, {"display": brand, "from_email": f"no-reply@{brand.lower()}.com"})
+
+            msg = MIMEMultipart("alternative")
+            msg['From'] = f"{info['display']} <{info['from_email']}>"
+            msg['Reply-To'] = f"support@{brand.lower()}.com"
+            msg['To'] = email
+            msg['Subject'] = f"Your {brand} Order Confirmation"
+            msg['Message-ID'] = f"<{random.randint(1000000000000000000,9999999999999999999)}@{brand.lower()}.com>"
+
+            plain_text = f"Order ID: {order_id}\nItem: {item}\nTotal: ${total:,.2f}\nThank you!"
+            msg.attach(MIMEText(plain_text, 'plain'))
+            msg.attach(MIMEText(html_body, 'html'))
+
+            try:
+                server = smtplib.SMTP('smtp.gmail.com', 587, timeout=30)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(SENDER_EMAIL, APP_PASSWORD)
+                server.send_message(msg)
+                server.quit()
+                embed = Embed(title="Success!", description=f"Receipt sent to {email}! Check inbox/spam.", color=Colour.green())
+                await interaction.edit_original_response(embed=embed)
+            except Exception as e:
+                embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
+                await interaction.edit_original_response(embed=embed)
+                print(f"SMTP full error: {str(e)}")  # Shows in Railway logs
+
+        except ValueError:
+            embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
+            await interaction.edit_original_response(embed=embed)
+
+@tree.command(name="generate", description="Generate a receipt (role required)")
+async def generate(interaction: discord.Interaction):
+    if not any(r.id == ROLE_ID for r in interaction.user.roles):
+        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    await interaction.response.send_modal(GenerateModal())
 
 client.run(BOT_TOKEN)
