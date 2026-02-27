@@ -130,9 +130,7 @@ class BrandSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
-        # Delete the select message to clean up
-        await interaction.message.delete()
-        # Send the modal with pre-filled brand
+        await interaction.message.delete()  # Clean up select message
         await interaction.response.send_modal(GenerateModal(brand=brand, user_id=interaction.user.id))
 
 class BrandView(ui.View):
