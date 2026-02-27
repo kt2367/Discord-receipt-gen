@@ -1,5 +1,5 @@
 import discord
-from discord import app_commands, ui
+from discord import app_commands, ui, Embed, Colour
 import datetime
 import random
 import asyncio
@@ -39,76 +39,91 @@ async def on_ready():
     await tree.sync()
     print(f"Bot online as {client.user} 🚀 - Ready for commands!")
 
-def parse_duration(dur: str) -> int:
-    if not dur or not dur[0].isdigit():
-        return 0
-    num = int(''.join(filter(str.isdigit, dur)))
-    unit = dur.lower()[-2:] if dur.lower().endswith(('mo', 'wk')) else dur.lower()[-1]
-    if unit in ['s', 'sec']: return num
-    if unit in ['m', 'min']: return num * 60
-    if unit in ['h', 'hr']: return num * 3600
-    if unit == 'd': return num * 86400
-    if unit in ['w', 'wk']: return num * 604800
-    if unit in ['mo', 'mth']: return num * 2592000
-    return 0
-
 @tree.command(name="role", description="Give temp role (admin only)")
 @app_commands.describe(member="User", duration="e.g. 1d 2w 3m")
 @app_commands.checks.has_permissions(administrator=True)
 async def assign_role(interaction: discord.Interaction, member: discord.Member, duration: str):
     role = interaction.guild.get_role(ROLE_ID)
     if not role:
-        await interaction.response.send_message("Role not found!", ephemeral=True)
+        embed = Embed(title="Error", description="Role not found!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         return
+
     await member.add_roles(role)
-    seconds = parse_duration(duration)
-    if seconds <= 0:
-        await interaction.response.send_message("Invalid duration!", ephemeral=True)
-        return
-    await interaction.response.send_message(f"Gave {role.name} to {member} for {duration} (no auto-remove yet)", ephemeral=True)
+    embed = Embed(
+        title="Role Assigned",
+        description=f"Gave {role.name} to {member.mention} for {duration} (no auto-remove yet)",
+        color=Colour.green()
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class EmailModal(ui.Modal, title="Enter Your Email"):
-    email = ui.TextInput(label="Email for receipts", style=discord.TextStyle.short)
+    email = ui.TextInput(label="Email for receipts", style=discord.TextStyle.short, required=True)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Email saved for this session! Starting setup in DMs...", ephemeral=True)
+        embed = Embed(
+            title="Email Received",
+            description=f"Using {self.email.value} for this receipt.\nStarting setup in DMs...",
+            color=Colour.blue()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         await start_setup(interaction.user, self.email.value)
 
 @tree.command(name="setup", description="Start receipt generator (role required)")
 async def setup(interaction: discord.Interaction):
     if not any(r.id == ROLE_ID for r in interaction.user.roles):
-        await interaction.response.send_message("You need the special role!", ephemeral=True)
+        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    await interaction.response.send_modal(EmailModal())
 
-async def start_setup(user: discord.User, email: str):
+    embed = Embed(title="Starting Setup", description="Check your DMs!", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+    await interaction.user.send(embed=Embed(title="Setup Started", description="Answer the questions below.", color=Colour.blue()))
+    await start_setup(interaction.user, None)  # We'll ask for email in DM if not provided
+
+async def start_setup(user: discord.User, email: str = None):
     dm = await user.create_dm()
+
     try:
-        await dm.send(f"Brands: {', '.join(BRANDS)}")
-        await dm.send("Which brand?")
+        if not email:
+            embed = Embed(title="Email Needed", description="What's your email to send the receipt to?", color=Colour.orange())
+            await dm.send(embed=embed)
+            msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
+            email = msg.content.strip()
+            embed = Embed(title="Email Saved", description=f"Using {email} for this receipt.", color=Colour.green())
+            await dm.send(embed=embed)
+
+        embed = Embed(title="Pick Brand", description=f"Available: {', '.join(BRANDS)}\nReply with one.", color=Colour.blue())
+        await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         brand = msg.content.strip().title()
         if brand not in BRANDS:
-            await dm.send("Invalid brand. Run /setup again.")
+            embed = Embed(title="Invalid Brand", description="Try again with /setup.", color=Colour.red())
+            await dm.send(embed=embed)
             return
 
-        await dm.send("Item name?")
+        embed = Embed(title="Item Name", description="What item?", color=Colour.blue())
+        await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         item = msg.content.strip()
 
-        await dm.send("Price in USD?")
+        embed = Embed(title="Price", description="Price in USD?", color=Colour.blue())
+        await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         price = float(msg.content.strip())
 
-        await dm.send("Quantity? (enter for 1)")
+        embed = Embed(title="Quantity", description="Quantity? (enter for 1)", color=Colour.blue())
+        await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         quantity = int(msg.content.strip() or 1)
 
-        await dm.send("Shipping address? (optional, enter for N/A)")
+        embed = Embed(title="Shipping", description="Shipping address? (optional, enter for N/A)", color=Colour.blue())
+        await dm.send(embed=embed)
         msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
         shipping = msg.content.strip() or "N/A"
 
-        await dm.send("Generating & sending receipt... ⏳")
+        embed = Embed(title="Generating...", description="Sending branded receipt to {email}...", color=Colour.orange())
+        await dm.send(embed=embed)
 
         order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
         today = datetime.date.today().strftime("%B %d, %Y")
@@ -116,16 +131,25 @@ async def start_setup(user: discord.User, email: str):
         tax = subtotal * 0.08
         total = subtotal + tax
 
-        # Simple HTML receipt (customize per brand if you want)
+        # HTML receipt body
         html_body = f"""
         <html>
         <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
-        <h2>{brand} Order Confirmation</h2>
-        <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
-        <p>Item: {item} x{quantity} - ${price:,.2f}</p>
-        <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
-        <p>Shipping: {shipping}</p>
-        <p>Thank you for shopping with {brand}!</p>
+        <h2 style="color:#0066cc;">{brand} Order Confirmation</h2>
+        <p><strong>Order ID:</strong> {order_id}<br>
+        <strong>Date:</strong> {today}<br>
+        <strong>Billed to:</strong> {email}</p>
+        <hr>
+        <p><strong>Item:</strong> {item}<br>
+        <strong>Qty:</strong> {quantity}<br>
+        <strong>Price:</strong> ${price:,.2f}</p>
+        <hr>
+        <p><strong>Subtotal:</strong> ${subtotal:,.2f}<br>
+        <strong>Tax (8%):</strong> ${tax:,.2f}<br>
+        <strong>Total:</strong> ${total:,.2f}</p>
+        <p><strong>Shipping:</strong> {shipping}</p>
+        <hr>
+        <p style="font-size:12px; color:#666;">Thank you for shopping with {brand}! Keep this for your records.</p>
         </body>
         </html>
         """
@@ -140,21 +164,28 @@ async def start_setup(user: discord.User, email: str):
         msg.attach(MIMEText(html_body, 'html'))
 
         try:
-            with smtplib.SMTP('smtp-mail.outlook.com', 587) as server:
-                server.ehlo()
-                server.starttls()
-                server.ehlo()
-                server.login(SENDER_EMAIL, APP_PASSWORD)
-                server.send_message(msg)
-            await dm.send(f"Receipt sent to {email}! Check inbox/spam. 🔥")
+            server = smtplib.SMTP('smtp-mail.outlook.com', 587, timeout=30)
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(SENDER_EMAIL, APP_PASSWORD)
+            server.send_message(msg)
+            server.quit()
+            embed = Embed(title="Success!", description=f"Receipt sent to {email}! Check inbox/spam.", color=Colour.green())
+            await dm.send(embed=embed)
         except Exception as e:
-            await dm.send(f"Email send failed: {str(e)}. Check vars or Outlook spam settings.")
+            embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Outlook spam, creds, or try again.", color=Colour.red())
+            await dm.send(embed=embed)
+            print(f"Email error: {str(e)}")  # Logs in Railway
 
     except asyncio.TimeoutError:
-        await dm.send("Timed out - run /setup again.")
+        embed = Embed(title="Timed Out", description="Run /setup again.", color=Colour.red())
+        await dm.send(embed=embed)
     except ValueError:
-        await dm.send("Invalid price/qty - retry.")
+        embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
+        await dm.send(embed=embed)
     except Exception as e:
-        await dm.send(f"Error: {str(e)}")
+        embed = Embed(title="Error", description=f"Something broke: {str(e)}", color=Colour.red())
+        await dm.send(embed=embed)
 
 client.run(BOT_TOKEN)
