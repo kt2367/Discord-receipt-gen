@@ -1,1 +1,4 @@
-discord.py>=2.2.2
+discord.py==2.4.0
+sqlalchemy
+psycopg2-binary
+requests
