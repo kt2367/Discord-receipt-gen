@@ -28,7 +28,7 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand-specific From settings
+# Brand-specific From settings for realistic sender line
 brand_from = {
     'Cartier': {"display": "Cartier", "from_email": "concierge@cartier.com"},
     'Nike': {"display": "Nike", "from_email": "orders@nike.com"},
