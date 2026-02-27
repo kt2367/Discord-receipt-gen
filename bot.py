@@ -213,7 +213,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             except Exception as e:
                 embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
                 await dm.send(embed=embed)
-                print(f"SMTP full error: {str(e)}")  # Shows in Railway logs
+                print(f"SMTP full error: {str(e)}")
 
         except ValueError:
             embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
