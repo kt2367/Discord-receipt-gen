@@ -127,10 +127,10 @@ class BrandSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
-        print(f"Brand selected: {brand} - sending modal directly...")
-        await interaction.message.delete()  # Clean up dropdown immediately
+        await interaction.response.defer(ephemeral=True)
+        await interaction.message.delete()
         modal = GenerateModal(brand=brand, user_id=interaction.user.id)
-        await interaction.response.send_modal(modal)  # Direct send - no defer
+        await interaction.followup.send_modal(modal)
 
 class BrandView(ui.View):
     def __init__(self):
