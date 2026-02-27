@@ -101,7 +101,7 @@ async def assign_role(interaction: discord.Interaction, member: discord.Member, 
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 class EmailModal(ui.Modal, title="Hook Your Email"):
-    email = ui.TextInput(label="Enter your email for receipts", style=discord.TextStyle.long, required=True)
+    email = ui.TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
 
     async def on_submit(self, interaction: discord.Interaction):
         user_emails[interaction.user.id] = self.email.value
@@ -118,7 +118,7 @@ async def setup(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    embed = Embed(title="Setup", description="Enter your email in the popup below.", color=Colour.blue())
+    embed = Embed(title="Email Setup", description="Please enter your email in the popup below.", color=Colour.blue())
     await interaction.response.send_message(embed=embed, ephemeral=True)
     await interaction.response.send_modal(EmailModal())
 
@@ -143,18 +143,18 @@ async def generate(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    embed = Embed(title="Select Brand", description="Pick from the dropdown below.", color=Colour.blue())
-    await interaction.response.send_message(embed=embed, view=BrandView())
+    embed = Embed(title="Select Brand", description="Choose from the dropdown below.", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, view=BrandView(), ephemeral=True)
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand, user_id):
         self.brand = brand
         self.user_id = user_id
         super().__init__()
-        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True)
-        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True)
-        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False)
-        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False)
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro")
+        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
+        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
+        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
 
     async def on_submit(self, interaction: discord.Interaction):
         email = user_emails.get(self.user_id)
