@@ -118,6 +118,8 @@ async def setup(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
+    embed = Embed(title="Email Setup", description="Enter your email in the popup below.", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, ephemeral=True)
     await interaction.response.send_modal(EmailModal())
 
 class BrandSelect(ui.Select):
@@ -130,7 +132,7 @@ class BrandSelect(ui.Select):
         await interaction.response.defer(ephemeral=True)
         await interaction.message.delete()
         modal = GenerateModal(brand=brand, user_id=interaction.user.id)
-        await interaction.followup.send_modal(modal)
+        await interaction.followup.send_modal(modal, ephemeral=True)
 
 class BrandView(ui.View):
     def __init__(self):
