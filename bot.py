@@ -118,7 +118,7 @@ async def setup(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    embed = Embed(title="Email Setup", description="Please enter your email in the popup below.", color=Colour.blue())
+    embed = Embed(title="Email Setup", description="Enter your email in the popup below.", color=Colour.blue())
     await interaction.response.send_message(embed=embed, ephemeral=True)
     await interaction.response.send_modal(EmailModal())
 
@@ -129,8 +129,9 @@ class BrandSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
+        await interaction.response.defer()
         await interaction.message.delete()  # Clean up select message
-        await interaction.response.send_modal(GenerateModal(brand=brand, user_id=interaction.user.id))
+        await interaction.followup.send_modal(GenerateModal(brand=brand, user_id=interaction.user.id))
 
 class BrandView(ui.View):
     def __init__(self):
@@ -143,7 +144,7 @@ async def generate(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    embed = Embed(title="Select Brand", description="Choose from the dropdown below.", color=Colour.blue())
+    embed = Embed(title="Select Brand", description="Choose from the dropdown below (private to you).", color=Colour.blue())
     await interaction.response.send_message(embed=embed, view=BrandView(), ephemeral=True)
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
@@ -151,7 +152,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.brand = brand
         self.user_id = user_id
         super().__init__()
-        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro")
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
         self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
         self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
         self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
