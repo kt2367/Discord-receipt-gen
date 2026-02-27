@@ -1,136 +1,280 @@
 import discord
-from discord.ext import commands
+from discord import app_commands, ui
+import datetime
+import random
+import asyncio
 import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from sqlalchemy import create_engine, Column, Integer, String, BigInteger, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+
+# === CONFIG FROM ENV VARS (Railway) ===
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # AppleReceipts@outlook.com
+APP_PASSWORD = os.getenv("APP_PASSWORD")  # RoseThea81
+DATABASE_URL = os.getenv("DATABASE_URL")
+ROLE_ID = 1472751333286350981
+
+if not all([BOT_TOKEN, SENDER_EMAIL, APP_PASSWORD, DATABASE_URL]):
+    print("Missing required env vars!")
+    exit(1)
+
+# DB Setup
+engine = create_engine(DATABASE_URL)
+Base = declarative_base()
+Session = sessionmaker(bind=engine)
+
+class UserEmail(Base):
+    __tablename__ = 'user_emails'
+    user_id = Column(BigInteger, primary_key=True)
+    email = Column(String)
+
+class RoleTimer(Base):
+    __tablename__ = 'role_timers'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(BigInteger)
+    guild_id = Column(BigInteger)
+    role_id = Column(BigInteger)
+    remove_at = Column(DateTime)
+
+Base.metadata.create_all(engine)
+
+# Brands (simple list; HTML customized per brand in send function)
+BRANDS = [
+    'Cartier', 'Denim Tears', 'Ksubi', 'Balenciaga', 'Sp5der',
+    'Nike', 'Adidas', 'Lululemon', 'Lanvin', 'Creed',
+    'Baccarat', 'Sephora', 'Apple'
+]
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="$", intents=intents)
+intents.members = True
+client = discord.Client(intents=intents)
+tree = app_commands.CommandTree(client)
 
-ALLOWED_ROLE_ID = 1472751333286350981
-
-# All prefixes and their view-only links
-template_links = {
-    "$gen 2 pros": "https://docs.google.com/document/d/1wzMcQjWDtxqG00oeyrEa8WNKsjULhu--/view",
-    "$gen 1 pros": "https://docs.google.com/document/d/1o2w9cTM9wZXWJ2wHV5DFhs75fegfNcxc/view",
-    "$maxes": "https://docs.google.com/document/d/1Im6pR2eeGI8R534HO_6tPTOx1va8lcy6/view",
-    "$gen 4": "https://docs.google.com/document/d/1HnOsvNIIbZW17czsNvwXOzLPcqGjdDxY/view",
-    "$gen 2": "https://docs.google.com/document/d/1PEchU2wLeB9O_Gu5d619_LF4gzAvsV8F/view",
-    "$burberry her elixir": "https://docs.google.com/document/d/1HBdeft5grbTDyyQenGY3dJL0XSVDKdDz/view",
-    "$gucci guilty pour home toilette": "https://docs.google.com/document/d/1DEEcspmYVGDevUrzQXDB39dcP68x9tRI/view",
-    "$gucci guilty pour homme eau de": "https://docs.google.com/document/d/1hDwGZRcoa5saZxgydbBBCAXRDxS7HRW5/view",
-    "$good girl floral vanilla": "https://docs.google.com/document/d/1sONH0wNcsFCnCE5Mn4qPWYUwsVaz3m0e/view",
-    "$creed virgin island": "https://drive.google.com/file/d/1mVFtQnJM_mkKD3Bn5N4Wa3jmQz8f8ETl/view",
-    "$dior sauvage pafum": "https://docs.google.com/document/d/1j9oeoxg8Rdk-ipIE2f0h0nc0pB7UuNGw/view",
-    "$dior sauvage elixir": "https://docs.google.com/document/d/1lItxoHzfhTzjKmXWufkfvHC9N97_w6rt/view",
-    "$tom ford tobacco vanille": "https://docs.google.com/document/d/1_YSwRXVqKj-4Sg9IXqRuZsAHonQLTnIB/view",
-    "$chanel bleu de parfum": "https://docs.google.com/document/d/1hgOok9BJ93-6o-Dyz0ajDKmqC_I-Obw7/view",
-    "$baccarat rouge 540": "https://docs.google.com/document/d/19jF2xAPoJyusTEZiYCnoJQ4WbDBsv_x3/view",
-    "$creed aventus": "https://docs.google.com/document/d/1Bo_RX-gkINMAuzFma3AfnZYnL1wtTLXn/view",
-    "$valentino born in roma intense": "https://docs.google.com/document/d/19clwFpnzrkjiViqbvmcvC43cYJg4KORN/view",
-    "$ysl libre eau de parfum": "https://docs.google.com/document/d/1bTYQL__VvgS2VX_qosal2joGT95hhsM2/view",
-    "$ysl black opium eau de parfum": "https://docs.google.com/document/d/1O4OamiTa2zZP8gByh1TkADvRb572XjFx/view",
-    "$carolina herrara very good girl eau de parfum": "https://docs.google.com/document/d/17Y2SqOu8WL3VrKo7OpoXKm-mV3v_msIz/view",
-    "$versace eros parfum": "https://docs.google.com/document/d/1dQ75K5xYoAb-eRp6hYPGI-4FSNaX685z/view",
-    "$ysl y eau de parfum": "https://docs.google.com/document/d/1DEOSa8v8o_l9kgktaSSEm7Fr9SJDfWNf/view",
-    "$valentino born in roma eau de toilette": "https://docs.google.com/document/d/1xyg6DUid9TGHa3oxZHKvop84ZNZbaOx1/view",
-    "$lv imagination": "https://docs.google.com/document/d/1nMSFDW3rj4pfRovPEYhHMeaisHxtrSaz/view",
-    "$rabanne 1 million eau de toilette": "https://docs.google.com/document/d/1gOidbpQTQocT2K6a-Krs2cWaoCmE4OyA/view",
-    "$xerjoff erba pura": "https://docs.google.com/document/d/1JZG_458O6vQFWsJ1SnTCyOFjpiEWoDmY/view",
-    "$jpg le male elixir": "https://docs.google.com/document/d/1MToEn7BbVIL77KVujmPL2FqQSiVNAhGL/view",
-    "$lv pacific chill": "https://docs.google.com/document/d/1De9c0n27XdpQDzDf9Iz3VblJB5_ffW7W/view",
-    "$armani stronger with you absolutely": "https://docs.google.com/document/d/1lisfjaFTCpRg8jnVNxjqR2dOLUew1eBJ/view",
-    "$parfums de marley layton": "https://docs.google.com/document/d/1fCDCNP2QP88lV2RCU5nE04J5b3yxG1zg/view",
-    "$dior miss dior blooming": "https://docs.google.com/document/d/12SueYEAD8vrhe1DUys2v_EF5wL2E0-Av/view",
-    "$carolina herrera good girl eau de parfum coffee": "https://docs.google.com/document/d/1HS4WDQu21ZloZL460uLcvIeqSDO45h0_/view",
-    "$chanel coco mademoiselle eau de parfum intense": "https://docs.google.com/document/d/1621MnoqvDy7TGU9toVyZU5H4i1S7sfxm/view",
-    "$gucci bloom eau de parfum": "https://docs.google.com/document/d/1hqS2D_iOcy2ZnWuRUtf8P-FgD6okXadg/view",
-    "$valentino donna eau de parfum": "https://docs.google.com/document/d/1lrfv0QEDLkd8qI1RmoMzNgRNhCkBYQdW/view",
-    "$armani acqua di gio eau de toilette": "https://docs.google.com/document/d/1Y10rQqZMTTcee1vINbJZf9cMRo3m7UMW/view",
-    "$initio oud for greatness": "https://docs.google.com/document/d/1QfBjRlUyaofhFOh9-DkLqGoNKdm6hr9T/view",
-    "$creed silver mountain water": "https://docs.google.com/document/d/1WWLWlEqN9ylO8rGu-V-D2BQ3ftZSf_YK/view",
-    "$ysl myslf eau de parfum": "https://docs.google.com/document/d/1rr2B0ZsR2E_HYv45wivpyYrOKfW21v6s/view",
-    "$armani armani code parfum": "https://docs.google.com/document/d/1l782JM-vQzvOdbeA1fEE2ZbaYyaUX0p9/view",
-    "$kilian angels share eau de parfum": "https://docs.google.com/document/d/1Wv_we_8nesGjO61s0boIXrV4L9nvhSEj/view",
-    "$parfums de marly althair": "https://docs.google.com/document/d/18WIJhLvpsgKPVl0tl7DzrKAgQu2aBpL_/view",
-    "$parfums de marley delina": "https://docs.google.com/document/d/1_-4E8n1WNPIc_QNjQGSenIyscqn2NTWT/view",
-    "$prada paradoxe intense eau de parfum": "https://docs.google.com/document/d/1gYOujvmA0feHNWzOtOwAtC5bMr_TlYFR/view",
-    "$creed milesime imperial": "https://docs.google.com/document/d/1rzhfYGrwqS8KBsuRISFFk7_614XVHHjN/view",
-    "$lv city of stars": "https://docs.google.com/document/d/1wSEYk1LW2v3LXefGDZLQSL5KHNGH5lLd/view",
-    "$lv after swim": "https://docs.google.com/document/d/1LK0E-3kwzkcdIrSTRFuyKUxQvfuRlvNW/view",
-    "$tom ford lost cherry eau de parfum": "https://docs.google.com/document/d/13gCWaFrarh9tP8MJZ9BedEtDWIxYj1yM/view",
-    "$tom ford fucking fabulous eau de parfum": "https://docs.google.com/document/d/1PjdugI3F4Ef6qoRwBT9f0_MsWg6TPw4G/view",
-    "$carolina herrera bad boy cobalt": "https://docs.google.com/document/d/1qMjZL_XpwX-_yCoCMCNFlD8LgI9wrnjH/view",
-    "$carolina herrara bad boy elixir eau de parfum woody leather": "https://drive.google.com/file/d/1jcvGZoQnjq627vhTHar2BOsL5NEAtF76/view",
-    "$carolina herrara nyc 212 men": "https://docs.google.com/document/d/1LvdDnEymiK-ZEWsvOlnpI_AeK-uKsHTN/view",
-    "$valentino donna born in roma yellow dream": "https://docs.google.com/document/d/1zSeU9ko2uXWGh3r5oSj1SoJUWBO6MFPX/view",
-    "$initio desire without limit love beyond reason": "https://docs.google.com/document/d/1Mex7h9QCYXLmGjYBXeqKWf-1Yt_47EHj/view",
-    "$versace bright crystal": "https://docs.google.com/document/d/1VnqDR6wOiPTVtu8jUhTgopPRYe0cjO_C/view",
-    "$ysl mon paris": "https://docs.google.com/document/d/18AXBm902PiiCGfv2nGU4ctnhYGEPa3Cj/view",
-    "$maison francis oud silk mood": "https://docs.google.com/document/d/1WWCKzxc_Pxx7RIegfO6swUv_Ehuly5lB/view",
-    "$gucci flora gorgeous jasmine": "https://docs.google.com/document/d/1UKj0TrBlrV1ibgp_1quGmxh9woS5rP3T/view",
-    "$versace eros flame": "https://docs.google.com/document/d/1GqG1pNIbLrno9cv0LGB_k1GaCrAgNfHu/view",
-    "$chanel chance eau splendide": "https://docs.google.com/document/d/1AV9EdiBEd16CDr7HvJ-8rbgJZ5d2sAX2/view",
-    "$creed absolu aventus": "https://docs.google.com/document/d/1_cOx9m7qbPsoDd-ZpWgNnfUlGEVjlVwE/view",
-    "$dior jadore": "https://docs.google.com/document/d/1O29hlEvP5p2Zi-Xn-iORxwB4-iws836P/view",
-    "$jpg le male le parfum": "https://docs.google.com/document/d/12GAEWiiqjiiPS4EvBNZHhJbB0B15uMxX/view",
-    "$jpg scandal pour homme": "https://docs.google.com/document/d/1GXHqRi8IUrafKgsF-zq3cYIGleq7ZMh7/view",
-    "$jpg gaultier²": "https://docs.google.com/document/d/1UH6SZWqGVXek2-AZgFCvKpcOYsdl3b7l/view",
-    "$jpg le beau": "https://docs.google.com/document/d/14trotWq7haf7v4LyLmxoNG4Dx09PlJYB/view",
-    "$valentino uomo born in roma the gold": "https://docs.google.com/document/d/1vE_TkZN7aItBuwruJxO1nPDRSZczAWF2/view",
-    "$valentino uomo born in roma green stravaganza": "https://docs.google.com/document/d/1pntMpeglHKm-BNFgzSrohh65XcaajuyV/view",
-    "$rabanne invictus eau de toilette": "https://docs.google.com/document/d/1VNI95MOFWAI8tZoqNA5wZvYgnd4Eirg7/view",
-    "$lancome la via est belle": "https://docs.google.com/document/d/14s9SUhVXeeS7P5Eb1x57UQ2TceLlfNDW/view",
-    "$chanel n°5": "https://docs.google.com/document/d/16K805hE-ZQcb_GwoA2nxXcqToS5TkCUq/view",
-    "$armani stronger with you intensely": "https://docs.google.com/document/d/1ZfHJ67SOgtgU-Y13enfNRipEgj0Cfav7/view",
-    "$armani my way": "https://docs.google.com/document/d/1hTicol5fTutN0KMOj0hs1KxMu30C3MkQ/view",
-    "$byredo rose of no man's land": "https://docs.google.com/document/d/1WjFN-TaQkpXjTL-eAbIXuD4-xJ1rV3Hz/view",
-    "$tom ford eau dombre leather": "https://docs.google.com/document/d/1kSQRCW-jk2VwZgLG6XWp9jumEFuOj9C2/view",
-    "$tom ford bitter peach": "https://docs.google.com/document/d/1EJ7onm88rHexUuKL2CdO2waCP4W9u0H6/view",
-    "$tom ford rose prick": "https://docs.google.com/document/d/1TD-4awsTSZJSoew_cShLdzqEKvMOBX3T/view",
-    "$tom ford oud wood": "https://docs.google.com/document/d/1wgjsa_0JM6GiOD8Ysq9FR6OX5mLuBOwf/view",
-    "$tom ford black orchid": "https://docs.google.com/document/d/18wGWIbLFRnqOuoDDgi7QU7VhSZTLDXX_/view",
-    "$maison francis grand soir": "https://docs.google.com/document/d/15QX8aZit256Q2QYoeYUtyJAqd3fYTmve/view",
-    "$valentino donna born in roma green": "https://docs.google.com/document/d/1bn6xNrfqpvQLzWQc4mRUOxth9H8NBVDB/view"
-}
-
-@bot.event
+@client.event
 async def on_ready():
-    print(f"Bot logged in as {bot.user}")
+    await tree.sync()
+    print(f"Bot online as {client.user} 🚀")
+    await load_timers()
 
-def has_role(user):
-    return any(role.id == ALLOWED_ROLE_ID for role in user.roles)
+# Role timer functions (same as before)
+async def load_timers():
+    session = Session()
+    try:
+        now = datetime.datetime.utcnow()
+        timers = session.query(RoleTimer).filter(RoleTimer.remove_at > now).all()
+        for timer in timers:
+            delay = (timer.remove_at - now).total_seconds()
+            asyncio.create_task(schedule_role_removal(timer.user_id, timer.guild_id, timer.role_id, delay))
+        expired = session.query(RoleTimer).filter(RoleTimer.remove_at <= now).all()
+        for exp in expired:
+            guild = client.get_guild(exp.guild_id)
+            if guild:
+                member = guild.get_member(exp.user_id)
+                role = guild.get_role(exp.role_id)
+                if member and role:
+                    await member.remove_roles(role)
+        session.query(RoleTimer).filter(RoleTimer.remove_at <= now).delete()
+        session.commit()
+    except Exception as e:
+        print(f"Timer load error: {e}")
+    finally:
+        session.close()
 
-# $receipts command with embed
-@bot.command()
-async def receipts(ctx):
-    if not has_role(ctx.author):
-        await ctx.send("receipt/gen access denied")
+async def schedule_role_removal(user_id, guild_id, role_id, delay):
+    await asyncio.sleep(delay)
+    guild = client.get_guild(guild_id)
+    if guild:
+        member = guild.get_member(user_id)
+        role = guild.get_role(role_id)
+        if member and role:
+            await member.remove_roles(role)
+    session = Session()
+    try:
+        timer = session.query(RoleTimer).filter_by(user_id=user_id, guild_id=guild_id, role_id=role_id).first()
+        if timer:
+            session.delete(timer)
+            session.commit()
+    finally:
+        session.close()
+
+def parse_duration(dur: str) -> int:
+    if not dur or not dur[0].isdigit():
+        return 0
+    num = int(''.join(filter(str.isdigit, dur)))
+    unit = dur.lower()[-2:] if dur.lower().endswith(('mo', 'wk')) else dur.lower()[-1]
+    if unit in ['s', 'sec']: return num
+    if unit in ['m', 'min']: return num * 60
+    if unit in ['h', 'hr']: return num * 3600
+    if unit == 'd': return num * 86400
+    if unit in ['w', 'wk']: return num * 604800
+    if unit in ['mo', 'mth']: return num * 2592000
+    return 0
+
+@tree.command(name="role", description="Give temp role (admin only)")
+@app_commands.describe(member="User", duration="e.g. 1d 2w 3m")
+@app_commands.checks.has_permissions(administrator=True)
+async def assign_role(interaction: discord.Interaction, member: discord.Member, duration: str):
+    role = interaction.guild.get_role(ROLE_ID)
+    if not role:
+        await interaction.response.send_message("Role not found!", ephemeral=True)
         return
-
-    embed = discord.Embed(
-        title="Available Templates",
-        description="\n".join(template_links.keys()),
-        color=discord.Color.blue()
-    )
-    embed.set_footer(text="Select a template using its prefix")
-    await ctx.author.send(embed=embed)
-    await ctx.send("✅ Check your DMs for all templates!")
-
-@bot.event
-async def on_message(message):
-    if message.author.bot:
+    await member.add_roles(role)
+    seconds = parse_duration(duration)
+    if seconds <= 0:
+        await interaction.response.send_message("Invalid duration!", ephemeral=True)
         return
+    remove_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=seconds)
+    session = Session()
+    try:
+        new_timer = RoleTimer(user_id=member.id, guild_id=interaction.guild_id, role_id=ROLE_ID, remove_at=remove_at)
+        session.add(new_timer)
+        session.commit()
+        asyncio.create_task(schedule_role_removal(member.id, interaction.guild_id, ROLE_ID, seconds))
+        await interaction.response.send_message(f"Gave {role.name} to {member} for {duration}", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"Error: {str(e)}", ephemeral=True)
+    finally:
+        session.close()
 
-    # First process commands like $receipts
-    await bot.process_commands(message)
+class EmailModal(ui.Modal, title="Enter Your Email"):
+    email = ui.TextInput(label="Email for receipts", style=discord.TextStyle.short)
 
-    # Now handle template DMs
-    content = message.content.lower()
-    if content in template_links:
-        if not has_role(message.author):
-            await message.channel.send("receipt/gen access denied")
+    async def on_submit(self, interaction: discord.Interaction):
+        session = Session()
+        try:
+            existing = session.query(UserEmail).filter_by(user_id=interaction.user.id).first()
+            if existing:
+                existing.email = self.email.value
+            else:
+                session.add(UserEmail(user_id=interaction.user.id, email=self.email.value))
+            session.commit()
+            await interaction.response.send_message("Email saved! Starting setup in DMs...", ephemeral=True)
+            await start_setup(interaction.user, self.email.value)
+        except Exception as e:
+            await interaction.response.send_message(f"Error: {str(e)}", ephemeral=True)
+        finally:
+            session.close()
+
+@tree.command(name="setup", description="Start receipt generator (role required)")
+async def setup(interaction: discord.Interaction):
+    if not any(r.id == ROLE_ID for r in interaction.user.roles):
+        await interaction.response.send_message("You need the special role!", ephemeral=True)
+        return
+    session = Session()
+    try:
+        user_email = session.query(UserEmail).filter_by(user_id=interaction.user.id).first()
+        if user_email:
+            await interaction.response.send_message("Using saved email. DMing setup...", ephemeral=True)
+            await start_setup(interaction.user, user_email.email)
         else:
-            await message.author.send(template_links[content])
-            await message.channel.send("✅ Success! Check your DMs.")
+            await interaction.response.send_modal(EmailModal())
+    except Exception as e:
+        await interaction.response.send_message(f"Error: {str(e)}", ephemeral=True)
+    finally:
+        session.close()
 
-bot.run(os.getenv("DISCORD_TOKEN"))
+async def start_setup(user: discord.User, email: str):
+    dm = await user.create_dm()
+    try:
+        await dm.send(f"Brands: {', '.join(BRANDS)}")
+        await dm.send("Which brand?")
+        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
+        brand = msg.content.strip().title()
+        if brand not in BRANDS:
+            await dm.send("Invalid brand. Try again with /setup.")
+            return
+
+        await dm.send("Item name?")
+        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
+        item = msg.content.strip()
+
+        await dm.send("Price in USD?")
+        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
+        price = float(msg.content.strip())
+
+        await dm.send("Quantity? (enter for 1)")
+        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
+        quantity = int(msg.content.strip() or 1)
+
+        await dm.send("Shipping address? (optional, enter for N/A)")
+        msg = await client.wait_for('message', check=lambda m: m.author == user and isinstance(m.channel, discord.DMChannel), timeout=300)
+        shipping = msg.content.strip() or "N/A"
+
+        await dm.send("Generating & sending branded receipt... ⏳")
+
+        # Receipt details
+        order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
+        today = datetime.date.today().strftime("%B %d, %Y")
+        subtotal = price * quantity
+        tax = subtotal * 0.08
+        total = subtotal + tax
+
+        # Brand-specific HTML (customize as needed; fallback generic)
+        if brand == 'Apple':
+            html_body = f"""
+            <html><body style="font-family: -apple-system, sans-serif; color:#000; background:#fff; padding:20px;">
+            <h2>Apple Order Confirmation</h2>
+            <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
+            <p>Item: {item}<br>Qty: {quantity}<br>Price: ${price:,.2f}</p>
+            <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
+            <p>Questions? support.apple.com</p>
+            </body></html>
+            """
+        elif brand == 'Nike':
+            html_body = f"""
+            <html><body style="font-family: Helvetica, sans-serif; color:#000; background:#fff; padding:20px;">
+            <h2>Nike Order Received</h2>
+            <p>Order #{order_id} on {today}</p>
+            <p>Item: {item}<br>Qty: {quantity}<br>Price: ${price:,.2f}</p>
+            <p>Total: ${total:,.2f}</p>
+            <p>Thank you! Track at nike.com</p>
+            </body></html>
+            """
+        else:
+            # Generic fallback for other brands
+            html_body = f"""
+            <html><body style="font-family: Arial, sans-serif; padding:20px;">
+            <h2>{brand} Order Confirmation</h2>
+            <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
+            <p>Item: {item} x{quantity} - ${price:,.2f}</p>
+            <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
+            <p>Thank you for shopping with {brand}!</p>
+            </body></html>
+            """
+
+        # Build email
+        msg = MIMEMultipart("alternative")
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = email
+        msg['Subject'] = f"Your {brand} Order Confirmation"
+
+        plain_text = f"Order ID: {order_id}\nItem: {item}\nTotal: ${total:,.2f}\nThank you!"
+        msg.attach(MIMEText(plain_text, 'plain'))
+        msg.attach(MIMEText(html_body, 'html'))
+
+        # Send via Outlook SMTP
+        try:
+            with smtplib.SMTP('smtp-mail.outlook.com', 587) as server:
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(SENDER_EMAIL, APP_PASSWORD)
+                server.send_message(msg)
+            await dm.send(f"Receipt sent to {email}! Check inbox/spam. 🔥 (Edu demo only)")
+        except Exception as e:
+            await dm.send(f"Email failed: {str(e)}. Check env vars or Outlook settings.")
+
+    except asyncio.TimeoutError:
+        await dm.send("Timed out – run /setup again.")
+    except ValueError:
+        await dm.send("Invalid input (price/qty) – retry.")
+    except Exception as e:
+        await dm.send(f"Error: {str(e)}")
+
+client.run(BOT_TOKEN)
