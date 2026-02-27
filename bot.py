@@ -127,10 +127,11 @@ class BrandSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
-        await interaction.response.defer(ephemeral=True)  # Critical: gives time for modal
+        print(f"Brand selected: {brand}")  # Log to Railway
+        await interaction.response.defer(ephemeral=True)  # This is critical - gives time
         await interaction.message.delete()  # Clean up dropdown
         modal = GenerateModal(brand=brand, user_id=interaction.user.id)
-        await interaction.followup.send_modal(modal)  # Sends modal after defer
+        await interaction.followup.send_modal(modal)  # Send modal after defer
 
 class BrandView(ui.View):
     def __init__(self):
@@ -138,4 +139,94 @@ class BrandView(ui.View):
         self.add_item(BrandSelect())
 
 @tree.command(name="generate", description="Generate a receipt (role required)")
-async def generate(interaction
+async def generate(interaction: discord.Interaction):
+    if not any(r.id == ROLE_ID for r in interaction.user.roles):
+        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+    embed = Embed(title="Select Brand", description="Choose from the dropdown below (private to you).", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, view=BrandView(), ephemeral=True)
+
+class GenerateModal(ui.Modal, title="Receipt Details"):
+    def __init__(self, brand, user_id):
+        self.brand = brand
+        self.user_id = user_id
+        super().__init__()
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
+        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
+        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
+        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
+
+    async def on_submit(self, interaction: discord.Interaction):
+        email = user_emails.get(self.user_id)
+        if not email:
+            embed = Embed(title="No Email Hooked", description="Run /setup first to hook your email!", color=Colour.red())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+            return
+
+        brand = self.brand
+        try:
+            price = float(self.price.value.strip())
+            quantity = int(self.quantity.value.strip() or 1)
+            shipping = self.shipping.value.strip() or "N/A"
+            item = self.item.value.strip()
+
+            dm = await interaction.user.create_dm()
+            embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
+            await dm.send(embed=embed)
+
+            order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
+            today = datetime.date.today().strftime("%B %d, %Y")
+            subtotal = price * quantity
+            tax = subtotal * 0.08
+            total = subtotal + tax
+
+            html_body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
+            <h2 style="color:#000;">{brand} Order Confirmation</h2>
+            <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
+            <p>Item: {item} x{quantity} - ${price:,.2f}</p>
+            <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
+            <p>Shipping: {shipping}</p>
+            <p>Thank you for shopping with {brand}!</p>
+            </body>
+            </html>
+            """
+
+            info = brand_from.get(brand, {"display": brand, "from_email": f"no-reply@{brand.lower()}.com"})
+
+            msg = MIMEMultipart("alternative")
+            msg['From'] = f"{info['display']} <{info['from_email']}>"
+            msg['Reply-To'] = f"support@{brand.lower()}.com"
+            msg['To'] = email
+            msg['Subject'] = f"Your {brand} Order Confirmation"
+            msg['Message-ID'] = f"<{random.randint(1000000000000000000,9999999999999999999)}@{brand.lower()}.com>"
+
+            plain_text = f"Order ID: {order_id}\nItem: {item}\nTotal: ${total:,.2f}\nThank you!"
+            msg.attach(MIMEText(plain_text, 'plain'))
+            msg.attach(MIMEText(html_body, 'html'))
+
+            try:
+                server = smtplib.SMTP('smtp.gmail.com', 587, timeout=30)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
+                server.login(SENDER_EMAIL, APP_PASSWORD)
+                server.send_message(msg)
+                server.quit()
+                embed = Embed(title="Success!", description=f"Receipt sent to {email}! Check inbox/spam.", color=Colour.green())
+                await dm.send(embed=embed)
+            except Exception as e:
+                embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
+                await dm.send(embed=embed)
+                print(f"SMTP full error: {str(e)}")
+
+        except ValueError:
+            embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except Exception as e:
+            embed = Embed(title="Error", description=f"Something broke: {str(e)}", color=Colour.red())
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+
+client.run(BOT_TOKEN)
