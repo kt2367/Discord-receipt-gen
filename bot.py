@@ -28,7 +28,7 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand-specific From settings for realistic sender line
+# Brand-specific From settings
 brand_from = {
     'Cartier': {"display": "Cartier", "from_email": "concierge@cartier.com"},
     'Nike': {"display": "Nike", "from_email": "orders@nike.com"},
@@ -100,7 +100,7 @@ async def assign_role(interaction: discord.Interaction, member: discord.Member, 
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
-class EmailModal(ui.Modal, title="Email Hook"):
+class EmailModal(ui.Modal, title="Email Setup"):
     email = ui.TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -118,8 +118,6 @@ async def setup(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    embed = Embed(title="Email Setup", description="Enter your email in the popup below.", color=Colour.blue())
-    await interaction.response.send_message(embed=embed, ephemeral=True)
     await interaction.response.send_modal(EmailModal())
 
 class BrandSelect(ui.Select):
@@ -129,9 +127,10 @@ class BrandSelect(ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
-        await interaction.response.defer()
-        await interaction.message.delete()  # Clean up
-        await interaction.followup.send_modal(GenerateModal(brand=brand, user_id=interaction.user.id))
+        await interaction.response.defer(ephemeral=True)
+        await interaction.message.delete()
+        modal = GenerateModal(brand=brand, user_id=interaction.user.id)
+        await interaction.followup.send_modal(modal)
 
 class BrandView(ui.View):
     def __init__(self):
