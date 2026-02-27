@@ -129,7 +129,8 @@ class BrandSelect(ui.Select):
         brand = self.values[0]
         await interaction.response.defer(ephemeral=True)
         await interaction.message.delete()  # Clean up
-        await interaction.followup.send_modal(GenerateModal(brand=brand, user_id=interaction.user.id))
+        modal = GenerateModal(brand=brand, user_id=interaction.user.id)
+        await interaction.followup.send_modal(modal)
 
 class BrandView(ui.View):
     def __init__(self):
