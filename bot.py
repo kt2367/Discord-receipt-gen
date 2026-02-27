@@ -11,7 +11,7 @@ from email.mime.text import MIMEText
 # === CONFIG FROM ENV VARS ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # yourgmail@gmail.com
-APP_PASSWORD = os.getenv("APP_PASSWORD")  # 16-char Gmail app password
+APP_PASSWORD = os.getenv("APP_PASSWORD")  # 16-char Gmail app password (no spaces)
 
 if not all([BOT_TOKEN, SENDER_EMAIL, APP_PASSWORD]):
     print("Missing BOT_TOKEN, SENDER_EMAIL, or APP_PASSWORD!")
@@ -101,30 +101,47 @@ async def assign_role(interaction: discord.Interaction, member: discord.Member, 
     )
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+class EmailModal(ui.Modal, title="Hook Your Email"):
+    email = ui.TextInput(label="Enter your email for receipts", style=discord.TextStyle.short, required=True)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        user_emails[interaction.user.id] = self.email.value
+        embed = Embed(
+            title="Email Hooked",
+            description=f"Email {self.email.value} saved! Use /generate to create receipts.",
+            color=Colour.green()
+        )
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @tree.command(name="setup", description="Hook your email to your user (role required)")
 async def setup(interaction: discord.Interaction):
     if not any(r.id == ROLE_ID for r in interaction.user.roles):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
+    embed = Embed(title="Setup", description="Enter your email in the popup below.", color=Colour.blue())
+    await interaction.response.send_message(embed=embed, ephemeral=True)
     await interaction.response.send_modal(EmailModal())
 
 class BrandSelect(ui.Select):
-    def __init(self):
+    def __init__(self):
         options = [discord.SelectOption(label=brand) for brand in BRANDS]
         super().__init__(placeholder="Select a brand...", options=options, min_values=1, max_values=1)
 
     async def callback(self, interaction: discord.Interaction):
         brand = self.values[0]
+        # Delete the select message to clean up
+        await interaction.message.delete()
+        # Send the modal with pre-filled brand
         await interaction.response.send_modal(GenerateModal(brand=brand, user_id=interaction.user.id))
 
 class BrandView(ui.View):
-    def __init(self):
+    def __init__(self):
         super().__init__(timeout=300)
         self.add_item(BrandSelect())
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
-    def __init(self, brand, user_id):
+    def __init__(self, brand, user_id):
         self.brand = brand
         self.user_id = user_id
         super().__init__()
@@ -136,7 +153,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
     async def on_submit(self, interaction: discord.Interaction):
         email = user_emails.get(self.user_id)
         if not email:
-            embed = Embed(title="No Email Hooked", description="Run /setup first!", color=Colour.red())
+            embed = Embed(title="No Email Hooked", description="Run /setup first to hook your email!", color=Colour.red())
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
@@ -147,11 +164,8 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             shipping = self.shipping.value.strip() or "N/A"
             item = self.item.value.strip()
 
-            embed = Embed(title="Generating...", description="Email being sent...", color=Colour.orange())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-
             dm = await interaction.user.create_dm()
-            embed = Embed(title="Email Being Sent", description="Sending branded receipt to {email}...", color=Colour.orange())
+            embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
             await dm.send(embed=embed)
 
             order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
@@ -199,7 +213,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             except Exception as e:
                 embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
                 await dm.send(embed=embed)
-                print(f"SMTP full error: {str(e)}")
+                print(f"SMTP full error: {str(e)}")  # Shows in Railway logs
 
         except ValueError:
             embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
@@ -207,14 +221,5 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         except Exception as e:
             embed = Embed(title="Error", description=f"Something broke: {str(e)}", color=Colour.red())
             await interaction.edit_original_response(embed=embed)
-
-@tree.command(name="generate", description="Generate a receipt (role required)")
-async def generate(interaction: discord.Interaction):
-    if not any(r.id == ROLE_ID for r in interaction.user.roles):
-        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    embed = Embed(title="Select Brand", description="Pick from the dropdown below.", color=Colour.blue())
-    await interaction.response.send_message(embed=embed, view=BrandView(), ephemeral=True)
 
 client.run(BOT_TOKEN)
