@@ -121,23 +121,27 @@ async def setup(interaction: discord.Interaction):
     await interaction.response.send_modal(EmailModal())
 
 class BrandSelect(ui.Select):
-    def __init__(self):
+    def __init__(self, user_id):
         options = [discord.SelectOption(label=brand) for brand in BRANDS]
         super().__init__(placeholder="Select a brand...", options=options, min_values=1, max_values=1)
+        self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("This dropdown isn't yours!", ephemeral=True)
+            return
+
         brand = self.values[0]
-        print(f"Brand selected: {brand} - deferring...")  # Log to Railway
-        await interaction.response.defer(ephemeral=True)  # This buys time
-        modal = GenerateModal(brand=brand, user_id=interaction.user.id)
+        print(f"Brand selected by {interaction.user}: {brand}")
+        await interaction.response.defer()  # Defer to prevent timeout
+        modal = GenerateModal(brand=brand, user_id=self.user_id)
         await interaction.followup.send_modal(modal)  # Send modal
-        await interaction.message.delete()  # Delete dropdown last
-        print(f"Modal sent and dropdown deleted for brand: {brand}")
+        await interaction.message.delete()  # Delete after modal queued
 
 class BrandView(ui.View):
-    def __init__(self):
+    def __init__(self, user_id):
         super().__init__(timeout=300)
-        self.add_item(BrandSelect())
+        self.add_item(BrandSelect(user_id))
 
 @tree.command(name="generate", description="Generate a receipt (role required)")
 async def generate(interaction: discord.Interaction):
@@ -145,8 +149,9 @@ async def generate(interaction: discord.Interaction):
         embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
-    embed = Embed(title="Select Brand", description="Choose from the dropdown below (private to you).", color=Colour.blue())
-    await interaction.response.send_message(embed=embed, view=BrandView(), ephemeral=True)
+    embed = Embed(title="Select Brand", description="Choose from the dropdown below.", color=Colour.blue())
+    view = BrandView(interaction.user.id)
+    await interaction.response.send_message(embed=embed, view=view)
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand, user_id):
