@@ -124,18 +124,19 @@ class BrandSelect(ui.Select):
     def __init__(self, user_id):
         options = [discord.SelectOption(label=brand) for brand in BRANDS]
         super().__init__(placeholder="Select a brand...", options=options, min_values=1, max_values=1)
-        self.user_id = user_id  # Store who ran the command
+        self.user_id = user_id  # Restrict to user who ran command
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("This is not your selection!", ephemeral=True)
+            await interaction.response.send_message("This dropdown isn't yours!", ephemeral=True)
             return
 
         brand = self.values[0]
         print(f"Brand selected by {interaction.user}: {brand}")
-        await interaction.message.delete()  # Delete dropdown immediately
+        await interaction.response.defer()  # Defer to prevent timeout
+        await interaction.message.delete()  # Delete dropdown message
         modal = GenerateModal(brand=brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)
+        await interaction.followup.send_modal(modal)  # Send modal after defer
 
 class BrandView(ui.View):
     def __init__(self, user_id):
@@ -149,7 +150,7 @@ async def generate(interaction: discord.Interaction):
         await interaction.response.send_message(embed=embed, ephemeral=True)
         return
     embed = Embed(title="Select Brand", description="Choose from the dropdown below.", color=Colour.blue())
-    view = BrandView(interaction.user.id)  # Pass user_id to restrict interaction
+    view = BrandView(interaction.user.id)
     await interaction.response.send_message(embed=embed, view=view)
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
