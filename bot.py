@@ -1,6 +1,7 @@
+
 import discord
 from discord import app_commands, ui, Embed, Colour, ButtonStyle
-from discord.ui import TextInput  # Explicit import for discord.py 2.0+
+from discord.ui import TextInput  # Required for discord.py 2.0+
 import datetime
 import random
 import asyncio
@@ -130,7 +131,7 @@ tree = app_commands.CommandTree(client)
 async def on_ready():
     await tree.sync()
     logger.info(f"Bot online as {client.user}")
-    logger.info(f"discord.py version: {discord.__version__}")  # Log version for debugging
+    logger.info(f"discord.py version: {discord.__version__}")
     while True:
         await asyncio.sleep(30)
         logger.info("Heartbeat - bot alive")
@@ -142,7 +143,7 @@ async def setup(interaction: discord.Interaction):
         return
     await interaction.response.send_modal(EmailModal())
 
-class EmailModal(ui.Modal, title="Email Setup"):
+class EmailModal(discord.ui.Modal, title="Email Setup"):
     email = TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -195,7 +196,7 @@ class BrandButton(ui.Button):
         modal = GenerateModal(self.brand, self.user_id)
 
         try:
-            await interaction.response.send_modal(modal)  # MUST be FIRST response
+            await interaction.response.send_modal(modal)  # FIRST and ONLY response
             logger.info("Modal sent successfully")
         except Exception as e:
             logger.error(f"Modal send failed: {str(e)}")
@@ -224,7 +225,7 @@ async def generate(interaction: discord.Interaction):
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)  # Public
+    await interaction.response.send_message(embed=embed, view=view)
 
 class GenerateModal(discord.ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
