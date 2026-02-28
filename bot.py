@@ -188,22 +188,17 @@ class BrandButton(ui.Button):
             await interaction.response.send_message("This is not your button!", ephemeral=True)
             return
 
-        # Step 1: Immediate response to keep Discord happy
-        await interaction.response.send_message("Opening your receipt form...", ephemeral=True)
+        await interaction.response.send_message("Opening your receipt form in DM...", ephemeral=True)
 
         logger.info(f"User {interaction.user} clicked {self.brand}")
 
         try:
             modal = GenerateModal(self.brand, self.user_id)
-            # Step 2: Send modal via followup
-            await interaction.followup.send_modal(modal)
-            logger.info("Modal sent successfully")
+            await interaction.user.send_modal(modal)  # Send modal in DM - most reliable method
+            logger.info("Modal sent via DM")
         except Exception as e:
-            logger.error(f"Modal failed: {str(e)}")
-            await interaction.followup.send(
-                embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()),
-                ephemeral=True
-            )
+            logger.error(f"DM modal failed: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description="Could not open form. Make sure your DMs are open and try /generate again.", color=Colour.red()), ephemeral=True)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
@@ -219,12 +214,12 @@ async def generate(interaction: discord.Interaction):
 
     embed = Embed(
         title="Choose Your Brand",
-        description=f"{interaction.user.mention}, click a button below.\n(Only you can use these buttons)",
+        description=f"{interaction.user.mention}, click a button below.\n(Only you can use these buttons - form opens in DM)",
         color=Colour.blue()
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)  # Public in channel
+    await interaction.response.send_message(embed=embed, view=view)  # Public
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
