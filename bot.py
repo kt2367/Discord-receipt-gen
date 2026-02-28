@@ -1,3 +1,4 @@
+
 import discord
 from discord import app_commands, ui, Embed, Colour, ButtonStyle
 import datetime
@@ -134,7 +135,6 @@ class BrandButton(ui.Button):
         await interaction.response.defer(ephemeral=True)
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
         await interaction.followup.send_modal(modal)
-        # No delete here - let user dismiss the message manually (or add a Close button later)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
