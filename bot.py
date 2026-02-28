@@ -119,10 +119,10 @@ tree = app_commands.CommandTree(client)
 async def on_ready():
     await tree.sync()
     print(f"Bot online as {client.user} 🚀 - Ready for commands!")
-    # Keep-alive print for Railway
+    # Heartbeat for Railway
     while True:
         await asyncio.sleep(30)
-        print("Heartbeat - bot still alive")
+        print("Heartbeat - bot alive")
 
 @tree.command(name="setup", description="Hook your email to your user (role required)")
 async def setup(interaction: discord.Interaction):
@@ -138,30 +138,67 @@ class EmailModal(ui.Modal, title="Email Setup"):
         user_emails[interaction.user.id] = self.email.value
         await interaction.response.send_message(embed=Embed(title="Email Hooked", description=f"Email {self.email.value} saved!", color=Colour.green()), ephemeral=True)
 
+@tree.command(name="role", description="Give user the special role for a duration (e.g. 1d, 2w, 3m)")
+@app_commands.describe(user="The user", duration="Duration e.g. 1d 2w 3m")
+async def role(interaction: discord.Interaction, user: discord.Member, duration: str):
+    if not interaction.user.guild_permissions.manage_roles:
+        await interaction.response.send_message("You need manage roles permission.", ephemeral=True)
+        return
+
+    duration = duration.lower().strip()
+    if duration.endswith('d'):
+        days = int(duration[:-1])
+        delta = datetime.timedelta(days=days)
+    elif duration.endswith('w'):
+        weeks = int(duration[:-1])
+        delta = datetime.timedelta(weeks=weeks)
+    elif duration.endswith('m'):
+        months = int(duration[:-1])
+        delta = datetime.timedelta(days=months * 30)
+    else:
+        await interaction.response.send_message("Invalid format. Use e.g. 1d, 2w, 3m", ephemeral=True)
+        return
+
+    role = interaction.guild.get_role(ROLE_ID)
+    if not role:
+        await interaction.response.send_message("Role not found.", ephemeral=True)
+        return
+
+    await user.add_roles(role)
+    await interaction.response.send_message(f"Added role to {user.mention} for {duration}.", ephemeral=True)
+
+    await asyncio.sleep(delta.total_seconds())
+    await user.remove_roles(role)
+    print(f"Removed role from {user} after {duration}")
+
 class BrandButton(ui.Button):
     def __init__(self, brand, user_id):
-        super().__init__(label=brand, style=ButtonStyle.primary, custom_id=f"brand_{brand}")
+        super().__init__(label=brand, style=ButtonStyle.primary, custom_id=f"brand_{brand}_{user_id}")
         self.brand = brand
         self.user_id = user_id
 
     async def callback(self, interaction: discord.Interaction):
+        # Only allow the original user to click
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("This isn't your button!", ephemeral=True)
+            await interaction.response.send_message("This button is not for you!", ephemeral=True)
             return
 
-        # Defer immediately to prevent timeout
+        # Defer immediately to prevent "interaction failed"
         await interaction.response.defer(ephemeral=True)
 
         try:
             modal = GenerateModal(brand=self.brand, user_id=self.user_id)
             await interaction.followup.send_modal(modal)
+        except discord.errors.HTTPException as e:
+            print(f"Modal failed: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description="Failed to open modal. Try /generate again.", color=Colour.red()), ephemeral=True)
         except Exception as e:
-            print(f"Button callback error: {e}")
-            await interaction.followup.send(embed=Embed(title="Error", description="Failed to open modal. Try again.", color=Colour.red()), ephemeral=True)
+            print(f"Unexpected error in button: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description="Something went wrong. Contact staff.", color=Colour.red()), ephemeral=True)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=180)  # shorter timeout, but defer helps
+        super().__init__(timeout=180)  # 3 minutes
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
@@ -171,18 +208,18 @@ async def generate(interaction: discord.Interaction):
         await interaction.response.send_message(embed=Embed(title="Access Denied", description="You need the special role!", color=Colour.red()), ephemeral=True)
         return
 
-    # Defer to give more time if needed
-    await interaction.response.defer(ephemeral=True)
-
     embed = Embed(
         title="Choose Your Brand",
-        description="Click the button for the brand you want.",
+        description=f"{interaction.user.mention}, click the button for the brand you want.\n(Only you can use these buttons)",
         color=Colour.blue()
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-# Your GenerateModal and on_submit go here - keep them as is from previous version
+    # Send PUBLIC message in channel
+    await interaction.response.send_message(embed=embed, view=view)  # NO ephemeral=True
+
+# === Your GenerateModal class goes here ===
+# (Paste your full GenerateModal class with color/size/shipping logic from the previous version)
 
 client.run(BOT_TOKEN)
