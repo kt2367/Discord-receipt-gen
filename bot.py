@@ -1,7 +1,6 @@
-
 import discord
 from discord import app_commands, ui, Embed, Colour, ButtonStyle
-from discord.ui import TextInput  # Required for discord.py 2.0+
+from discord.ui import TextInput
 import datetime
 import random
 import asyncio
@@ -196,7 +195,7 @@ class BrandButton(ui.Button):
         modal = GenerateModal(self.brand, self.user_id)
 
         try:
-            await interaction.response.send_modal(modal)  # FIRST and ONLY response
+            await interaction.response.send_modal(modal)  # FIRST response - no message before this
             logger.info("Modal sent successfully")
         except Exception as e:
             logger.error(f"Modal send failed: {str(e)}")
@@ -208,7 +207,7 @@ class BrandButton(ui.Button):
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=None)
+        super().__init__(timeout=300)  # 5 minutes - safe value
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
