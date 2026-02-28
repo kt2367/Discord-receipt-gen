@@ -132,9 +132,9 @@ class BrandButton(ui.Button):
             return
 
         await interaction.response.defer(ephemeral=True)
-        await interaction.message.delete()  # Delete button message
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
         await interaction.followup.send_modal(modal)
+        # No delete here - let user dismiss the message manually (or add a Close button later)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
