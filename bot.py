@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands, ui, Embed, Colour, ButtonStyle
 import datetime
@@ -28,21 +27,38 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand display names + real logo URLs
+# Brand display names for inbox "From" (shows as "Cartier Order Confirmation" etc.)
+brand_display = {
+    'Cartier': "Cartier Order Confirmation",
+    'Denim Tears': "Denim Tears",
+    'Ksubi': "Ksubi",
+    'Balenciaga': "Balenciaga",
+    'Sp5der': "Sp5der",
+    'Nike': "Nike Order Confirmation",
+    'Adidas': "adidas",
+    'Lululemon': "lululemon athletica",
+    'Lanvin': "Lanvin",
+    'Creed': "Creed Boutique",
+    'Baccarat': "Baccarat",
+    'Sephora': "Sephora",
+    'Apple': "Apple Store",
+}
+
+# Brand logos (public URLs)
 brand_info = {
-    'Cartier': {"display": "Cartier Concierge", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
-    'Denim Tears': {"display": "Denim Tears", "logo": "https://i.imgur.com/denimtearslogo.png"},
-    'Ksubi': {"display": "Ksubi", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
-    'Balenciaga': {"display": "Balenciaga", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
-    'Sp5der': {"display": "Sp5der", "logo": "https://i.imgur.com/sp5derlogo.png"},
-    'Nike': {"display": "Nike", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png"},
-    'Adidas': {"display": "adidas", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png"},
-    'Lululemon': {"display": "lululemon athletica", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
-    'Lanvin': {"display": "Lanvin", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
-    'Creed': {"display": "Creed Boutique", "logo": "https://i.imgur.com/creedlogo.png"},
-    'Baccarat': {"display": "Baccarat", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
-    'Sephora': {"display": "Sephora", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png"},
-    'Apple': {"display": "Apple Store", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png"},
+    'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
+    'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
+    'Ksubi': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
+    'Balenciaga': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
+    'Sp5der': {"logo": "https://i.imgur.com/sp5derlogo.png"},
+    'Nike': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png"},
+    'Adidas': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png"},
+    'Lululemon': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
+    'Lanvin': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
+    'Creed': {"logo": "https://i.imgur.com/creedlogo.png"},
+    'Baccarat': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
+    'Sephora': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png"},
+    'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png"},
 }
 
 # Fake data for randomization
