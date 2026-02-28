@@ -18,7 +18,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 if not all([BOT_TOKEN, SENDER_EMAIL, SENDGRID_API_KEY]):
-    logger.error("Missing BOT_TOKEN, SENDER_EMAIL or SENDGRID_API_KEY")
+    logger.error("Missing env vars!")
     exit(1)
 
 ROLE_ID = 1472751333286350981
@@ -179,7 +179,7 @@ async def role(interaction: discord.Interaction, user: discord.Member, duration:
 
 class BrandButton(ui.Button):
     def __init__(self, brand, user_id):
-        super().__init__(label=brand, style=ButtonStyle.primary, custom_id=f"brand_select_{user_id}_{brand}")
+        super().__init__(label=brand, style=ButtonStyle.primary, custom_id=f"brand_{user_id}_{brand}")
         self.brand = brand
         self.user_id = user_id
 
@@ -188,17 +188,18 @@ class BrandButton(ui.Button):
             await interaction.response.send_message("This is not your button!", ephemeral=True)
             return
 
-        # Immediate visible response to satisfy Discord's 3-second rule
+        # Step 1: Immediate response to keep Discord happy
         await interaction.response.send_message("Opening your receipt form...", ephemeral=True)
 
-        logger.info(f"Button clicked by {interaction.user} for {self.brand}")
+        logger.info(f"User {interaction.user} clicked {self.brand}")
 
         try:
             modal = GenerateModal(self.brand, self.user_id)
+            # Step 2: Send modal via followup
             await interaction.followup.send_modal(modal)
-            logger.info("Modal successfully queued")
+            logger.info("Modal sent successfully")
         except Exception as e:
-            logger.error(f"Modal queue failed: {str(e)}")
+            logger.error(f"Modal failed: {str(e)}")
             await interaction.followup.send(
                 embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()),
                 ephemeral=True
@@ -206,7 +207,7 @@ class BrandButton(ui.Button):
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=None)  # persistent
+        super().__init__(timeout=None)
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
@@ -218,12 +219,12 @@ async def generate(interaction: discord.Interaction):
 
     embed = Embed(
         title="Choose Your Brand",
-        description=f"{interaction.user.mention}, click a button below to select your brand.\n(Only you can use these buttons)",
+        description=f"{interaction.user.mention}, click a button below.\n(Only you can use these buttons)",
         color=Colour.blue()
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)  # public
+    await interaction.response.send_message(embed=embed, view=view)  # Public in channel
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
@@ -280,7 +281,6 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             payment = random.choice(FAKE_PAYMENT_METHODS)
             gift = random.choice(["Gift wrapping added", ""])
 
-            # === Your hyper-realistic HTML body (same as before) ===
             html_body = f"""
             <html>
             <body style="font-family: Georgia, 'Times New Roman', serif; background:#f8f8f8; color:#111; margin:0; padding:0; font-size:11px; line-height:1.4;">
@@ -375,7 +375,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             await interaction.followup.send(embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()), ephemeral=True)
 
         except Exception as e:
-            logger.error(f"Modal submit error: {e}")
+            logger.error(f"Submit error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
 client.run(BOT_TOKEN)
