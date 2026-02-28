@@ -132,7 +132,7 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)  # Direct modal send - no defer, no followup
+        await interaction.response.send_modal(modal)  # DIRECT send_modal - this is the fix
 
 class BrandView(ui.View):
     def __init__(self, user_id):
