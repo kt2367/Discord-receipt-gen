@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands, ui, Embed, Colour, ButtonStyle
 import datetime
@@ -132,9 +131,8 @@ class BrandButton(ui.Button):
             await interaction.response.send_message("This isn't your button!", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.followup.send_modal(modal)
+        await interaction.response.send_modal(modal)  # Direct modal send - no defer, no followup
 
 class BrandView(ui.View):
     def __init__(self, user_id):
