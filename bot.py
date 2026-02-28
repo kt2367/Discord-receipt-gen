@@ -28,6 +28,23 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
+# Map brands to emojis (you can change these if you want)
+BRAND_EMOJIS = {
+    'Cartier': '💎',
+    'Denim Tears': '👖',
+    'Ksubi': '🖤',
+    'Balenciaga': '👜',
+    'Sp5der': '🕷️',
+    'Nike': '🏃',
+    'Adidas': '🔥',
+    'Lululemon': '🧘',
+    'Lanvin': '🕴️',
+    'Creed': '🌹',
+    'Baccarat': '🥃',
+    'Sephora': '💄',
+    'Apple': '🍎'
+}
+
 # Brand-specific From settings for realistic sender line
 brand_from = {
     'Cartier': {"display": "Cartier", "from_email": "concierge@cartier.com"},
@@ -50,6 +67,8 @@ user_emails = {}
 
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
+intents.reactions = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
@@ -58,88 +77,67 @@ async def on_ready():
     await tree.sync()
     print(f"Bot online as {client.user} 🚀 - Ready for commands!")
 
-def parse_duration(dur: str) -> int:
-    if not dur or not dur[0].isdigit():
-        return 0
-    num = int(''.join(filter(str.isdigit, dur)))
-    unit = dur.lower()[-2:] if dur.lower().endswith(('mo', 'wk')) else dur.lower()[-1]
-    if unit in ['s', 'sec']: return num
-    if unit in ['m', 'min']: return num * 60
-    if unit in ['h', 'hr']: return num * 3600
-    if unit == 'd': return num * 86400
-    if unit in ['w', 'wk']: return num * 604800
-    if unit in ['mo', 'mth']: return num * 2592000
-    return 0
+@client.event
+async def on_raw_reaction_add(payload):
+    if payload.user_id == client.user.id:
+        return  # Ignore bot's own reactions
 
-async def remove_role_after_delay(member: discord.Member, role: discord.Role, seconds: int):
-    await asyncio.sleep(seconds)
-    await member.remove_roles(role)
-    print(f"Removed role {role.name} from {member} after {seconds} seconds")
-
-@tree.command(name="role", description="Give temp role (admin only)")
-@app_commands.describe(member="User", duration="e.g. 1d 2w 3m")
-@app_commands.checks.has_permissions(administrator=True)
-async def assign_role(interaction: discord.Interaction, member: discord.Member, duration: str):
-    if any(r.id == ROLE_ID for r in member.roles):
-        embed = Embed(title="Error", description=f"{member.mention} already has the role!", color=Colour.red())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+    guild = client.get_guild(payload.guild_id)
+    if not guild:
         return
-    role = interaction.guild.get_role(ROLE_ID)
-    if not role:
-        embed = Embed(title="Error", description="Role not found!", color=Colour.red())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    await member.add_roles(role)
-    seconds = parse_duration(duration)
-    if seconds > 0:
-        asyncio.create_task(remove_role_after_delay(member, role, seconds))
-    embed = Embed(
-        title="Role Assigned",
-        description=f"Gave {role.name} to {member.mention} for {duration} (auto-remove after time)",
-        color=Colour.green()
-    )
-    await interaction.response.send_message(embed=embed, ephemeral=True)
 
-class EmailModal(ui.Modal, title="Email Setup"):
-    email = ui.TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
+    channel = guild.get_channel(payload.channel_id)
+    if not channel:
+        return
+
+    message = await channel.fetch_message(payload.message_id)
+    if not message.author == client.user:
+        return
+
+    if not message.embeds or message.embeds[0].title != "Select Brand":
+        return
+
+    user = guild.get_member(payload.user_id)
+    if not user or not any(r.id == ROLE_ID for r in user.roles):
+        await message.remove_reaction(payload.emoji, user)
+        return
+
+    brand = None
+    for b, emoji in BRAND_EMOJIS.items():
+        if str(payload.emoji) == emoji:
+            brand = b
+            break
+
+    if not brand:
+        await message.remove_reaction(payload.emoji, user)
+        return
+
+    # Remove user's reaction so they can react again if needed
+    await message.remove_reaction(payload.emoji, user)
+
+    # Send questions modal
+    modal = GenerateModal(brand=brand, user_id=user.id)
+    await user.send(embed=Embed(title="Generating Receipt", description=f"Selected: {brand}. Fill out the details below.", color=Colour.blue()))
+    await modal.send_to(user)
+
+class GenerateModal(ui.Modal, title="Receipt Details"):
+    def __init__(self, brand, user_id):
+        self.brand = brand
+        self.user_id = user_id
+        super().__init__()
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
+        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
+        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
+        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
 
     async def on_submit(self, interaction: discord.Interaction):
-        user_emails[interaction.user.id] = self.email.value
-        embed = Embed(
-            title="Email Hooked",
-            description=f"Email {self.email.value} saved! Use /generate to create receipts.",
-            color=Colour.green()
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-@tree.command(name="setup", description="Hook your email to your user (role required)")
-async def setup(interaction: discord.Interaction):
-    if not any(r.id == ROLE_ID for r in interaction.user.roles):
-        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-        return
-    await interaction.response.send_modal(EmailModal())
-
-class GenerateModal(ui.Modal, title="Generate Receipt"):
-    brand = ui.TextInput(label="Brand", style=discord.TextStyle.short, required=True, placeholder=f"Available brands: {', '.join(BRANDS)}")
-    item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
-    price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
-    quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
-    shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
-
-    async def on_submit(self, interaction: discord.Interaction):
-        email = user_emails.get(interaction.user.id)
+        email = user_emails.get(self.user_id)
         if not email:
             embed = Embed(title="No Email Hooked", description="Run /setup first to hook your email!", color=Colour.red())
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        brand = self.brand.value.strip().title()
-        if brand not in BRANDS:
-            embed = Embed(title="Invalid Brand", description=f"Brand must be one of: {', '.join(BRANDS)}. Retry.", color=Colour.red())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            return
-
+        brand = self.brand
         try:
             price = float(self.price.value.strip())
             quantity = int(self.quantity.value.strip() or 1)
@@ -203,5 +201,24 @@ class GenerateModal(ui.Modal, title="Generate Receipt"):
         except Exception as e:
             embed = Embed(title="Error", description=f"Something broke: {str(e)}", color=Colour.red())
             await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@tree.command(name="generate", description="Generate a receipt (role required)")
+async def generate(interaction: discord.Interaction):
+    if not any(r.id == ROLE_ID for r in interaction.user.roles):
+        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return
+
+    embed = Embed(
+        title="Select a Brand",
+        description="React with the emoji for the brand you want.\n\n" + "\n".join([f"{BRAND_EMOJIS[b]} {b}" for b in BRANDS]),
+        color=Colour.blue()
+    )
+
+    message = await interaction.response.send_message(embed=embed)
+    message = await message.original_message()
+
+    for brand in BRANDS:
+        await message.add_reaction(BRAND_EMOJIS[brand])
 
 client.run(BOT_TOKEN)
