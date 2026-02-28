@@ -9,7 +9,6 @@ import logging
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-# Logging setup (helps debug on Railway)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('discord')
 
@@ -19,7 +18,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 if not all([BOT_TOKEN, SENDER_EMAIL, SENDGRID_API_KEY]):
-    logger.error("Missing BOT_TOKEN, SENDER_EMAIL or SENDGRID_API_KEY")
+    logger.error("Missing env vars!")
     exit(1)
 
 ROLE_ID = 1472751333286350981
@@ -105,7 +104,6 @@ STATE_TAX_RATES = {
     "WI": 0.0572, "WY": 0.0556, "DC": 0.0600
 }
 
-# Shipping multiplier by state (higher for farther from Ohio)
 STATE_SHIPPING_MULTIPLIER = {
     "OH": 1.0, "PA": 1.1, "MI": 1.1, "IN": 1.2, "KY": 1.2,
     "NY": 1.3, "IL": 1.4, "GA": 1.5, "FL": 1.7, "TX": 1.9,
@@ -190,18 +188,22 @@ class BrandButton(ui.Button):
             await interaction.response.send_message("This is not your button!", ephemeral=True)
             return
 
-        await interaction.response.defer(ephemeral=True)
+        # Critical: immediate response to satisfy 3-second rule
+        await interaction.response.send_message("Opening your receipt form...", ephemeral=True)
+
+        logger.info(f"User {interaction.user} clicked {self.brand} button")
 
         try:
             modal = GenerateModal(self.brand, self.user_id)
             await interaction.followup.send_modal(modal)
+            logger.info("Modal sent successfully")
         except Exception as e:
-            logger.error(f"Modal send failed: {e}")
-            await interaction.followup.send(embed=Embed(title="Error", description="Failed to open modal. Try /generate again.", color=Colour.red()), ephemeral=True)
+            logger.error(f"Failed to send modal: {e}", exc_info=True)
+            await interaction.followup.send(embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()), ephemeral=True)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=None)  # Persistent
+        super().__init__(timeout=None)  # no auto-timeout
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
@@ -213,12 +215,13 @@ async def generate(interaction: discord.Interaction):
 
     embed = Embed(
         title="Choose Your Brand",
-        description=f"{interaction.user.mention}, click a button below.\n(Only you can use these buttons)",
+        description=f"{interaction.user.mention}, click a button below to select your brand.\n(Only you can use these buttons)",
         color=Colour.blue()
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)  # Public
+    # Public message in channel
+    await interaction.response.send_message(embed=embed, view=view)
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
@@ -226,26 +229,26 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.brand = brand
         self.user_id = user_id
 
-        self.item = ui.TextInput(label="Item name", required=True, max_length=100)
-        self.price = ui.TextInput(label="Price per unit (USD)", required=True, max_length=20)
-        self.quantity = ui.TextInput(label="Quantity (default 1)", required=False, max_length=5)
-        self.color = ui.TextInput(label="Color (e.g. Silver, Gold)", required=True, max_length=20)
-        self.size = ui.TextInput(label="Size (e.g. 52)", required=True, max_length=10)
-        self.est_date = ui.TextInput(label="Estimated Delivery Date", required=True, max_length=30)
+        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.paragraph, required=True, max_length=100)
+        self.price = ui.TextInput(label="Price per unit in USD", style=discord.TextStyle.short, required=True, max_length=20)
+        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, max_length=5)
+        self.color = ui.TextInput(label="Color (e.g. Silver, Gold)", style=discord.TextStyle.short, required=True, max_length=20)
+        self.size = ui.TextInput(label="Size (e.g. 52)", style=discord.TextStyle.short, required=True, max_length=10)
+        self.shipping_date = ui.TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
 
         self.add_item(self.item)
         self.add_item(self.price)
         self.add_item(self.quantity)
         self.add_item(self.color)
         self.add_item(self.size)
-        self.add_item(self.est_date)
+        self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
 
         email = user_emails.get(self.user_id)
         if not email:
-            await interaction.followup.send(embed=Embed(title="No Email", description="Run /setup first.", color=Colour.red()), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="No Email", description="Run /setup first!", color=Colour.red()), ephemeral=True)
             return
 
         try:
@@ -253,7 +256,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             qty = int(self.quantity.value.strip() or 1)
             color_choice = self.color.value.strip().title()
             size_choice = self.size.value.strip()
-            est_date = self.est_date.value.strip()
+            est_date = self.shipping_date.value.strip()
 
             customer_name = random.choice(FAKE_NAMES)
             address = random.choice(FAKE_ADDRESSES)
@@ -262,17 +265,17 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
 
             subtotal = price * qty
 
-            # Realistic shipping cost
-            base = random.uniform(8, 18)
+            base_shipping = random.uniform(8, 18)
             mult = STATE_SHIPPING_MULTIPLIER.get(state, 1.5)
             surcharge = random.uniform(0, 8) * (mult - 1)
             variance = random.uniform(-3, 3)
-            delivery = round(max(5.00, base + surcharge + variance), 2)
+            delivery = round(max(5.00, base_shipping + surcharge + variance), 2)
 
             sales_tax = round(subtotal * tax_rate, 2)
             total = round(subtotal + delivery + sales_tax, 2)
 
-            order_id = f"{self.brand.upper()}-{random.randint(1000000000000000, 9999999999999999)}"
+            order_id = f"{self.brand.upper()}-{random.randint(1000000000000000,9999999999999999)}"
+            tracking = f"1Z{random.randint(1000000000,9999999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
             gift = random.choice(["Gift wrapping added", ""])
 
@@ -367,10 +370,10 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             response = sg.send(message)
             logger.info(f"Email sent - status {response.status_code}")
 
-            await interaction.followup.send(embed=Embed(title="Success", description=f"Receipt sent to {email}", color=Colour.green()), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()), ephemeral=True)
 
         except Exception as e:
-            logger.error(f"Modal submit error: {e}")
+            logger.error(f"Submit error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
 client.run(BOT_TOKEN)
