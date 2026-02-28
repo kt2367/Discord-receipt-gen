@@ -188,21 +188,28 @@ class BrandButton(ui.Button):
             await interaction.response.send_message("This is not your button!", ephemeral=True)
             return
 
-        await interaction.response.send_message("Opening your receipt form in DM...", ephemeral=True)
-
-        logger.info(f"User {interaction.user} clicked {self.brand}")
+        logger.info(f"User {interaction.user} clicked {self.brand} button")
 
         try:
             modal = GenerateModal(self.brand, self.user_id)
-            await interaction.user.send_modal(modal)  # Send modal in DM - most reliable method
-            logger.info("Modal sent via DM")
+            await interaction.response.send_modal(modal)  # MUST BE THE FIRST RESPONSE
+            logger.info("Modal sent successfully")
         except Exception as e:
-            logger.error(f"DM modal failed: {e}")
-            await interaction.followup.send(embed=Embed(title="Error", description="Could not open form. Make sure your DMs are open and try /generate again.", color=Colour.red()), ephemeral=True)
+            logger.error(f"Modal send failed: {str(e)}")
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()),
+                    ephemeral=True
+                )
+            else:
+                await interaction.followup.send(
+                    embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()),
+                    ephemeral=True
+                )
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=None)
+        super().__init__(timeout=None)  # Persistent
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
@@ -214,12 +221,12 @@ async def generate(interaction: discord.Interaction):
 
     embed = Embed(
         title="Choose Your Brand",
-        description=f"{interaction.user.mention}, click a button below.\n(Only you can use these buttons - form opens in DM)",
+        description=f"{interaction.user.mention}, click a button below.\n(Only you can use these buttons)",
         color=Colour.blue()
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)  # Public
+    await interaction.response.send_message(embed=embed, view=view)  # Public in channel
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
