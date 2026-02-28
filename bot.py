@@ -27,52 +27,38 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand-specific styling + logos
+# Brand display names for inbox "From" (shows as "Cartier <your@email.com>")
+brand_display = {
+    'Cartier': "Cartier",
+    'Denim Tears': "Denim Tears",
+    'Ksubi': "Ksubi",
+    'Balenciaga': "Balenciaga",
+    'Sp5der': "Sp5der",
+    'Nike': "Nike",
+    'Adidas': "adidas",
+    'Lululemon': "lululemon athletica",
+    'Lanvin': "Lanvin",
+    'Creed': "Creed",
+    'Baccarat': "Baccarat",
+    'Sephora': "Sephora",
+    'Apple': "Apple Store",
+}
+
+# Brand logos (public URLs)
 brand_info = {
-    'Cartier': {
-        "display": "Cartier",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png",
-        "banner_color": "#000000",
-        "text_color": "#FFFFFF",
-        "accent_color": "#C41E3A"
-    },
-    'Nike': {
-        "display": "Nike",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png",
-        "banner_color": "#000000",
-        "text_color": "#FFFFFF",
-        "accent_color": "#FF6600"
-    },
-    'Adidas': {
-        "display": "adidas",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png",
-        "banner_color": "#000000",
-        "text_color": "#FFFFFF",
-        "accent_color": "#FFFFFF"
-    },
-    'Sephora': {
-        "display": "Sephora",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png",
-        "banner_color": "#E31C79",
-        "text_color": "#FFFFFF",
-        "accent_color": "#000000"
-    },
-    'Apple': {
-        "display": "Apple Store",
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png",
-        "banner_color": "#000000",
-        "text_color": "#FFFFFF",
-        "accent_color": "#A2AAAD"
-    },
-    # Fallback for others
-    'Denim Tears': {"display": "Denim Tears", "logo": "https://i.imgur.com/denimtearslogo.png"},
-    'Ksubi': {"display": "Ksubi", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
-    'Balenciaga': {"display": "Balenciaga", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
-    'Sp5der': {"display": "Sp5der", "logo": "https://i.imgur.com/sp5derlogo.png"},
-    'Lululemon': {"display": "lululemon athletica", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
-    'Lanvin': {"display": "Lanvin", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
-    'Creed': {"display": "Creed Boutique", "logo": "https://i.imgur.com/creedlogo.png"},
-    'Baccarat': {"display": "Baccarat", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
+    'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
+    'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
+    'Ksubi': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
+    'Balenciaga': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
+    'Sp5der': {"logo": "https://i.imgur.com/sp5derlogo.png"},
+    'Nike': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png"},
+    'Adidas': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png"},
+    'Lululemon': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
+    'Lanvin': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
+    'Creed': {"logo": "https://i.imgur.com/creedlogo.png"},
+    'Baccarat': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
+    'Sephora': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png"},
+    'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png"},
 }
 
 # Fake data for randomization
@@ -249,10 +235,10 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             <body style="font-family: Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0;">
             <div style="max-width:600px; margin:0 auto; background:#000; padding:30px; color:#fff;">
             <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-width:200px; display:block; margin:0 auto 20px;" alt="{brand}">
-            <h2 style="text-align:center; margin:20px 0;">{brand} Order Confirmation</h2>
+            <h2 style="text-align:center; color:#fff; margin-bottom:10px;">{brand} Order Confirmation</h2>
             <p style="text-align:center; font-size:18px;">Dear {customer_name},</p>
-            <p style="font-size:14px; text-align:center;">Thank you for shopping with {brand}. We are pleased to acknowledge receipt of your order below.</p>
-            <p style="font-size:14px; text-align:center;">This is not a final confirmation. You will receive a separate email when your order ships.</p>
+            <p style="font-size:14px; text-align:center;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
+            <p style="font-size:14px; text-align:center;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
 
             <div style="background:#C41E3A; color:#fff; padding:15px; text-align:center; margin:20px 0; font-size:20px;">
             ORDER N° {order_id}
@@ -270,7 +256,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             <strong>VAT:</strong> ${price*quantity*0.08:,.2f}<br>
             <strong>Total:</strong> ${(price*quantity*1.08 + 10):,.2f} incl. VAT</p>
 
-            <p><strong>Estimated Delivery:</strong> {shipping_date}</p>
+            <p><strong>Estimated delivery date:</strong> {shipping_date}</p>
             <p><strong>Tracking Number:</strong> {tracking_number}</p>
 
             <div style="border-top:1px solid #fff; padding-top:20px; margin-top:20px;">
@@ -281,10 +267,10 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             <p style="font-size:14px; text-align:center; margin-top:30px;">Thank you for choosing {brand}.</p>
 
             <hr style="border:0; border-top:1px solid #fff; margin:20px 0;">
-            <p style="font-size:12px; text-align:center;">Questions? Contact us at {brand_display.get(brand, brand)} Support</p>
+            <p style="font-size:12px; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
 
             <div style="text-align:center; margin-top:20px; font-size:14px;">
-            <a href="{brand_info.get(brand, {'website': '#'})['website']}" style="color:#fff; text-decoration:underline; margin:0 10px;">Contact Us</a> |
+            <a href="https://www.{brand.lower()}.com/contact" style="color:#fff; text-decoration:underline; margin:0 10px;">Contact Us</a> |
             <a href="mailto:support@{brand.lower()}.com" style="color:#fff; text-decoration:underline; margin:0 10px;">Email Support</a> |
             <a href="tel:+1-800-555-0000" style="color:#fff; text-decoration:underline; margin:0 10px;">Call +1-800-555-0000</a>
             </div>
