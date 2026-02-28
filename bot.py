@@ -4,17 +4,16 @@ import datetime
 import random
 import asyncio
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 # === CONFIG FROM ENV VARS ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
-APP_PASSWORD = os.getenv("APP_PASSWORD")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # Your verified SendGrid sender email
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
-if not all([BOT_TOKEN, SENDER_EMAIL, APP_PASSWORD]):
-    print("Missing BOT_TOKEN, SENDER_EMAIL, or APP_PASSWORD!")
+if not all([BOT_TOKEN, SENDER_EMAIL, SENDGRID_API_KEY]):
+    print("Missing BOT_TOKEN, SENDER_EMAIL, or SENDGRID_API_KEY!")
     exit(1)
 
 print("BOT STARTING - ENV VARS OK")
@@ -28,22 +27,24 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-brand_from = {
-    'Cartier': {"display": "Cartier", "from_email": "concierge@cartier.com"},
-    'Nike': {"display": "Nike", "from_email": "orders@nike.com"},
-    'Adidas': {"display": "adidas", "from_email": "service@adidas.com"},
-    'Sephora': {"display": "Sephora", "from_email": "customerservice@sephora.com"},
-    'Lululemon': {"display": "lululemon athletica", "from_email": "support@lululemon.com"},
-    'Apple': {"display": "Apple Store", "from_email": "no-reply@apple.com"},
-    'Balenciaga': {"display": "Balenciaga", "from_email": "contact@balenciaga.com"},
-    'Creed': {"display": "Creed Boutique", "from_email": "info@creedboutique.com"},
-    'Lanvin': {"display": "Lanvin", "from_email": "contact@lanvin.com"},
-    'Baccarat': {"display": "Baccarat", "from_email": "service@baccarat.com"},
-    'Denim Tears': {"display": "Denim Tears", "from_email": "support@denimtears.com"},
-    'Ksubi': {"display": "Ksubi", "from_email": "hello@ksubi.com"},
-    'Sp5der': {"display": "Sp5der", "from_email": "support@sp5der.com"},
+# Brand-specific display names (what shows in inbox)
+brand_display = {
+    'Cartier': "Cartier Concierge",
+    'Denim Tears': "Denim Tears",
+    'Ksubi': "Ksubi",
+    'Balenciaga': "Balenciaga",
+    'Sp5der': "Sp5der",
+    'Nike': "Nike",
+    'Adidas': "adidas",
+    'Lululemon': "lululemon athletica",
+    'Lanvin': "Lanvin",
+    'Creed': "Creed Boutique",
+    'Baccarat': "Baccarat",
+    'Sephora': "Sephora",
+    'Apple': "Apple Store",
 }
 
+# In-memory storage for emails (user_id: email) - resets on restart
 user_emails = {}
 
 intents = discord.Intents.default()
@@ -88,7 +89,7 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)  # Direct send_modal - no defer
+        await interaction.response.send_modal(modal)  # Direct send_modal
 
 class BrandView(ui.View):
     def __init__(self, user_id):
@@ -156,7 +157,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.add_item(self.shipping)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)  # Must defer first to acknowledge
+        await interaction.response.defer(ephemeral=True)  # Acknowledge immediately
 
         email = user_emails.get(self.user_id)
         if not email:
@@ -181,20 +182,32 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
             await dm.send(embed=embed)
 
-            print("CONNECTING SMTP...")
-            server = smtplib.SMTP('smtp.gmail.com', 587, timeout=60)
-            print("LOGGING IN...")
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(SENDER_EMAIL, APP_PASSWORD)
-            print("SENDING...")
-            server.send_message(msg)
-            server.quit()
-            print("DONE")
+            # Build SendGrid message
+            from_display = brand_display.get(brand, brand)  # e.g. "Cartier Concierge"
+            message = Mail(
+                from_email=(SENDER_EMAIL, from_display),  # Verified email + brand display name
+                to_emails=email,
+                subject=f"Your {brand} Order Confirmation",
+                html_content=f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
+                <h2 style="color:#000;">{brand} Order Confirmation</h2>
+                <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
+                <p>Item: {item} x{quantity} - ${price:,.2f}</p>
+                <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
+                <p>Shipping: {shipping}</p>
+                <p>Thank you for shopping with {brand}!</p>
+                </body>
+                </html>
+                """
+            )
+
+            sg = SendGridAPIClient(api_key=SENDGRID_API_KEY)
+            response = sg.send(message)
+            print(f"SendGrid success - status: {response.status_code}")
 
             await interaction.followup.send(
-                embed=discord.Embed(
+                embed=Embed(
                     title="Success!",
                     description=f"Receipt sent to {email}! Check inbox/spam.",
                     color=Colour.green()
@@ -206,11 +219,11 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             await interaction.message.delete()
 
         except Exception as e:
-            print("SMTP ERROR:", e)
+            print(f"SendGrid error: {str(e)}")
             await interaction.followup.send(
-                embed=discord.Embed(
+                embed=Embed(
                     title="Email Failed",
-                    description=f"Error: {str(e)}\nCheck creds, spam folder, or Gmail App Password.",
+                    description=f"Error: {str(e)}\nCheck SendGrid dashboard, key, or spam folder.",
                     color=Colour.red()
                 ),
                 ephemeral=True
@@ -218,7 +231,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
 
         except ValueError:
             await interaction.followup.send(
-                embed=discord.Embed(
+                embed=Embed(
                     title="Invalid Input",
                     description="Price/qty must be numbers. Retry.",
                     color=Colour.red()
@@ -227,7 +240,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             )
         except Exception as e:
             await interaction.followup.send(
-                embed=discord.Embed(
+                embed=Embed(
                     title="Error",
                     description=f"Something broke: {str(e)}",
                     color=Colour.red()
