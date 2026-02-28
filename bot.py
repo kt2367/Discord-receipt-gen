@@ -1,5 +1,6 @@
 import discord
 from discord import app_commands, ui, Embed, Colour, ButtonStyle
+from discord.ui import TextInput  # Explicit import for discord.py 2.0+
 import datetime
 import random
 import asyncio
@@ -129,6 +130,7 @@ tree = app_commands.CommandTree(client)
 async def on_ready():
     await tree.sync()
     logger.info(f"Bot online as {client.user}")
+    logger.info(f"discord.py version: {discord.__version__}")  # Log version for debugging
     while True:
         await asyncio.sleep(30)
         logger.info("Heartbeat - bot alive")
@@ -141,7 +143,7 @@ async def setup(interaction: discord.Interaction):
     await interaction.response.send_modal(EmailModal())
 
 class EmailModal(ui.Modal, title="Email Setup"):
-    email = ui.TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
+    email = TextInput(label="What's your email?", style=discord.TextStyle.long, required=True, placeholder="Enter your email for receipts...")
 
     async def on_submit(self, interaction: discord.Interaction):
         user_emails[interaction.user.id] = self.email.value
@@ -188,11 +190,12 @@ class BrandButton(ui.Button):
             await interaction.response.send_message("This is not your button!", ephemeral=True)
             return
 
-        logger.info(f"User {interaction.user} clicked {self.brand} button")
+        logger.info(f"User {interaction.user} clicked {self.brand}")
+
+        modal = GenerateModal(self.brand, self.user_id)
 
         try:
-            modal = GenerateModal(self.brand, self.user_id)
-            await interaction.response.send_modal(modal)  # MUST BE THE FIRST RESPONSE
+            await interaction.response.send_modal(modal)  # MUST be FIRST response
             logger.info("Modal sent successfully")
         except Exception as e:
             logger.error(f"Modal send failed: {str(e)}")
@@ -201,15 +204,10 @@ class BrandButton(ui.Button):
                     embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()),
                     ephemeral=True
                 )
-            else:
-                await interaction.followup.send(
-                    embed=Embed(title="Error", description="Failed to open form. Try /generate again.", color=Colour.red()),
-                    ephemeral=True
-                )
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=None)  # Persistent
+        super().__init__(timeout=None)
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
@@ -226,20 +224,20 @@ async def generate(interaction: discord.Interaction):
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)  # Public in channel
+    await interaction.response.send_message(embed=embed, view=view)  # Public
 
-class GenerateModal(ui.Modal, title="Receipt Details"):
+class GenerateModal(discord.ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
-        super().__init__(title=f"{brand} Receipt")
+        super().__init__()
         self.brand = brand
         self.user_id = user_id
 
-        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.paragraph, required=True, max_length=100)
-        self.price = ui.TextInput(label="Price per unit in USD", style=discord.TextStyle.short, required=True, max_length=20)
-        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, max_length=5)
-        self.color = ui.TextInput(label="Color (e.g. Silver, Gold)", style=discord.TextStyle.short, required=True, max_length=20)
-        self.size = ui.TextInput(label="Size (e.g. 52)", style=discord.TextStyle.short, required=True, max_length=10)
-        self.shipping_date = ui.TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
+        self.item = TextInput(label="Item name", style=discord.TextStyle.paragraph, required=True, max_length=100)
+        self.price = TextInput(label="Price per unit in USD", style=discord.TextStyle.short, required=True, max_length=20)
+        self.quantity = TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, max_length=5)
+        self.color = TextInput(label="Color (e.g. Silver, Gold)", style=discord.TextStyle.short, required=True, max_length=20)
+        self.size = TextInput(label="Size (e.g. 52)", style=discord.TextStyle.short, required=True, max_length=10)
+        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
 
         self.add_item(self.item)
         self.add_item(self.price)
