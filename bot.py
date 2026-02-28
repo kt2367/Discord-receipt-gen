@@ -132,12 +132,11 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)  # DIRECT send_modal - no defer, no followup
+        await interaction.response.send_modal(modal)  # Direct send_modal - no defer, no followup
 
 class BrandView(ui.View):
     def __init__(self, user_id):
         super().__init__(timeout=300)
-        # Add buttons in rows (5 per row max)
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
@@ -158,37 +157,41 @@ async def generate(interaction: discord.Interaction):
     await interaction.response.send_message(embed=embed, view=view)
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
-    def __init__(self, brand, user_id):
-        super().__init__()
+    def __init__(self, brand: str, user_id: int):
+        super().__init__(title="Receipt Details")
         self.brand = brand
         self.user_id = user_id
 
-        self.item = ui.TextInput(
+        self.item = discord.ui.TextInput(
             label="Item name",
-            style=discord.TextStyle.long,
+            style=discord.TextStyle.paragraph,
+            placeholder="e.g. iPhone 16 Pro Max",
             required=True,
-            placeholder="e.g. iPhone 16 Pro Max"
+            max_length=100
         )
 
-        self.price = ui.TextInput(
+        self.price = discord.ui.TextInput(
             label="Price in USD",
             style=discord.TextStyle.short,
+            placeholder="e.g. 1199.00",
             required=True,
-            placeholder="e.g. 1199.00"
+            max_length=20
         )
 
-        self.quantity = ui.TextInput(
+        self.quantity = discord.ui.TextInput(
             label="Quantity (default 1)",
             style=discord.TextStyle.short,
+            placeholder="1",
             required=False,
-            placeholder="1"
+            max_length=5
         )
 
-        self.shipping = ui.TextInput(
+        self.shipping = discord.ui.TextInput(
             label="Shipping address (optional, N/A)",
-            style=discord.TextStyle.long,
+            style=discord.TextStyle.paragraph,
+            placeholder="N/A",
             required=False,
-            placeholder="N/A"
+            max_length=300
         )
 
         # CRITICAL - MUST ADD ITEMS
@@ -198,10 +201,19 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.add_item(self.shipping)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # DEFER FIRST - this acknowledges the interaction within 3 seconds
+        await interaction.response.defer(ephemeral=True)
+
         email = user_emails.get(self.user_id)
         if not email:
-            embed = Embed(title="No Email Hooked", description="Run /setup first to hook your email!", color=Colour.red())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    title="No Email Hooked",
+                    description="Run /setup first to hook your email!",
+                    color=Colour.red()
+                ),
+                ephemeral=True
+            )
             return
 
         brand = self.brand
@@ -255,18 +267,42 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
                 server.login(SENDER_EMAIL, APP_PASSWORD)
                 server.send_message(msg)
                 server.quit()
-                embed = Embed(title="Success!", description=f"Receipt sent to {email}! Check inbox/spam.", color=Colour.green())
-                await dm.send(embed=embed)
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Success!",
+                        description=f"Receipt sent to {email}! Check inbox/spam.",
+                        color=Colour.green()
+                    ),
+                    ephemeral=True
+                )
             except Exception as e:
-                embed = Embed(title="Email Failed", description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.", color=Colour.red())
-                await dm.send(embed=embed)
+                await interaction.followup.send(
+                    embed=discord.Embed(
+                        title="Email Failed",
+                        description=f"Error: {str(e)}\nCheck Gmail app password, spam, or creds.",
+                        color=Colour.red()
+                    ),
+                    ephemeral=True
+                )
                 print(f"SMTP full error: {str(e)}")
 
         except ValueError:
-            embed = Embed(title="Invalid Input", description="Price/qty must be numbers. Retry.", color=Colour.red())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Invalid Input",
+                    description="Price/qty must be numbers. Retry.",
+                    color=Colour.red()
+                ),
+                ephemeral=True
+            )
         except Exception as e:
-            embed = Embed(title="Error", description=f"Something broke: {str(e)}", color=Colour.red())
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(
+                embed=discord.Embed(
+                    title="Error",
+                    description=f"Something broke: {str(e)}",
+                    color=Colour.red()
+                ),
+                ephemeral=True
+            )
 
 client.run(BOT_TOKEN)
