@@ -111,6 +111,13 @@ def get_state_from_address(address):
             return state
     return "GA"
 
+# Rough distance multiplier from Ohio (Akron) - higher for far states
+STATE_SHIPPING_MULTIPLIER = {
+    "OH": 1.0, "PA": 1.1, "MI": 1.1, "IN": 1.2, "KY": 1.2,
+    "NY": 1.3, "IL": 1.4, "GA": 1.5, "FL": 1.7, "TX": 1.9,
+    "CA": 2.5, "WA": 2.8, "default": 1.5
+}
+
 user_emails = {}
 
 intents = discord.Intents.default()
@@ -220,11 +227,15 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.item = ui.TextInput(label="Item name", style=discord.TextStyle.paragraph, required=True, max_length=100)
         self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20)
         self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, max_length=5)
+        self.color = ui.TextInput(label="Color (Silver/Gold/etc)", style=discord.TextStyle.short, required=True, max_length=20, placeholder="Silver or Gold")
+        self.size = ui.TextInput(label="Size (e.g. 52)", style=discord.TextStyle.short, required=True, max_length=10, placeholder="52")
         self.shipping_date = ui.TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
 
         self.add_item(self.item)
         self.add_item(self.price)
         self.add_item(self.quantity)
+        self.add_item(self.color)
+        self.add_item(self.size)
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -238,6 +249,8 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         try:
             price = float(self.price.value.strip())
             qty = int(self.quantity.value.strip() or 1)
+            color_choice = self.color.value.strip().title()
+            size_choice = self.size.value.strip()
             est_date = self.shipping_date.value.strip()
 
             customer_name = random.choice(FAKE_NAMES)
@@ -246,7 +259,15 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
             subtotal = price * qty
-            delivery = round(random.uniform(5, 25), 2) if random.random() > 0.2 else 10.00
+
+            # Realistic shipping: base + state-based surcharge + small random variance
+            base_shipping = random.uniform(8, 18)
+            multiplier = STATE_SHIPPING_MULTIPLIER.get(state, STATE_SHIPPING_MULTIPLIER["default"])
+            surcharge = random.uniform(0, 8) * (multiplier - 1)
+            variance = random.uniform(-3, 3)
+            delivery = round(base_shipping + surcharge + variance, 2)
+            delivery = max(5.00, delivery)  # no free/too low
+
             sales_tax = round(subtotal * tax_rate, 2)
             total = round(subtotal + delivery + sales_tax, 2)
 
@@ -259,9 +280,9 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             <html>
             <body style="font-family: Georgia, 'Times New Roman', serif; background:#f8f8f8; color:#111; margin:0; padding:0; font-size:11px; line-height:1.4;">
             <div style="max-width:580px; margin:20px auto; background:#fff; border:1px solid #ccc;">
-                <!-- Top Banner -->
-                <div style="background: linear-gradient(to right, #8B0000, #000000); padding:30px 20px; text-align:center;">
-                    <h1 style="color:#fff; margin:0; font-size:28px; font-weight:400; letter-spacing:2px;">{self.brand}</h1>
+                <!-- Top Banner with fancy font -->
+                <div style="background: linear-gradient(to right, #8B0000, #000000); padding:40px 20px; text-align:center;">
+                    <h1 style="color:#fff; margin:0; font-size:42px; font-weight:400; letter-spacing:4px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style:italic;">{self.brand}</h1>
                 </div>
 
                 <div style="padding:25px 30px;">
@@ -279,9 +300,10 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
 
                     <div style="background:#111; color:#eee; padding:15px; margin:15px 0;">
                         <p style="margin:0 0 5px;"><strong>{self.item.value}</strong></p>
-                        <p style="margin:0 0 5px;">Silver</p>
-                        <p style="margin:0 0 5px;">52</p>
+                        <p style="margin:0 0 5px;">Color: {color_choice}</p>
+                        <p style="margin:0 0 5px;">Size: {size_choice}</p>
                         <p style="margin:0 0 5px;">{gift}</p>
+                        <p style="margin:0 0 5px;">Shipping Cost: ${delivery:,.2f}</p>
                         <p style="text-align:right; margin:5px 0 0;">${price:,.2f} x {qty}</p>
                     </div>
 
