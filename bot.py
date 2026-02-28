@@ -132,7 +132,7 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)  # Direct send_modal - no defer, no followup
+        await interaction.response.send_modal(modal)  # Direct send_modal
 
 class BrandView(ui.View):
     def __init__(self, user_id):
@@ -194,14 +194,13 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             max_length=300
         )
 
-        # CRITICAL - MUST ADD ITEMS
         self.add_item(self.item)
         self.add_item(self.price)
         self.add_item(self.quantity)
         self.add_item(self.shipping)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # DEFER FIRST - this acknowledges the interaction within 3 seconds
+        # DEFER FIRST - must be immediate to acknowledge within 3 seconds
         await interaction.response.defer(ephemeral=True)
 
         email = user_emails.get(self.user_id)
@@ -275,6 +274,8 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
                     ),
                     ephemeral=True
                 )
+                # Delete original message after success
+                await interaction.message.delete()
             except Exception as e:
                 await interaction.followup.send(
                     embed=discord.Embed(
