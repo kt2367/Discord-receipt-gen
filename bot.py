@@ -44,7 +44,7 @@ brand_display = {
     'Apple': "Apple Store",
 }
 
-# Brand logos (public URLs)
+# Brand logos (real public URLs)
 brand_info = {
     'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
     'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
@@ -81,10 +81,12 @@ FAKE_ADDRESSES = [
 ]
 
 FAKE_PAYMENT_METHODS = [
-    "Visa ending in 1234",
-    "Mastercard ending in 5678",
+    "Visa ending in 4823",
+    "Mastercard ending in 7192",
     "Apple Pay",
-    "Cash on Delivery"
+    "Cash on Delivery",
+    "Visa ending in 5634",
+    "Mastercard ending in 2941"
 ]
 
 user_emails = {}
@@ -225,6 +227,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             order_id = f"{brand.upper()}-{random.randint(1000000000000000000,9999999999999999999)}"
             tracking_number = f"1Z{random.randint(1000000000,9999999999)}"
             payment_method = random.choice(FAKE_PAYMENT_METHODS)
+            card_ending = random.randint(1000, 9999)  # Randomized 4-digit card ending
 
             dm = await interaction.user.create_dm()
             embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
@@ -232,47 +235,47 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
 
             html_body = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0;">
-            <div style="max-width:600px; margin:0 auto; background:#000; padding:30px; color:#fff;">
-            <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-width:200px; display:block; margin:0 auto 20px;" alt="{brand}">
-            <h2 style="text-align:center; color:#fff; margin-bottom:10px;">{brand} Order Confirmation</h2>
-            <p style="text-align:center; font-size:18px;">Dear {customer_name},</p>
-            <p style="font-size:14px; text-align:center;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
-            <p style="font-size:14px; text-align:center;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
+            <body style="font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0; font-size:12px; line-height:1.5;">
+            <div style="max-width:600px; margin:0 auto; padding:20px; border:1px solid #ddd; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+            <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-width:180px; display:block; margin:0 auto 20px;" alt="{brand}">
+            <h2 style="text-align:center; color:#000; margin-bottom:10px; font-size:18px;">{brand} Order Confirmation</h2>
+            <p style="text-align:center; font-size:14px;">Dear {customer_name},</p>
+            <p style="font-size:13px; text-align:center;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email to ensure that the details are accurate.</p>
+            <p style="font-size:13px; text-align:center;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
 
-            <div style="background:#C41E3A; color:#fff; padding:15px; text-align:center; margin:20px 0; font-size:20px;">
+            <div style="background:#C41E3A; color:#fff; padding:12px; text-align:center; margin:20px 0; font-size:18px; font-weight:bold;">
             ORDER N° {order_id}
             </div>
 
             <table style="width:100%; border-collapse:collapse; margin:20px 0; background:#fff; color:#000;">
-            <tr style="background:#f0f0f0;"><th style="padding:12px; text-align:left;">Item</th><th style="padding:12px; text-align:right;">Qty</th><th style="padding:12px; text-align:right;">Price</th></tr>
-            <tr><td style="padding:12px;">{self.item.value.strip()}</td><td style="padding:12px; text-align:right;">{quantity}</td><td style="padding:12px; text-align:right;">${price:,.2f}</td></tr>
+            <tr style="background:#f8f8f8;"><th style="padding:10px; text-align:left; font-size:13px;">Item</th><th style="padding:10px; text-align:right; font-size:13px;">Qty</th><th style="padding:10px; text-align:right; font-size:13px;">Price</th></tr>
+            <tr><td style="padding:10px; font-size:13px;">{self.item.value.strip()}</td><td style="padding:10px; text-align:right; font-size:13px;">{quantity}</td><td style="padding:10px; text-align:right; font-size:13px;">${price:,.2f}</td></tr>
             </table>
 
-            <p style="font-size:14px;"><strong>Payment Method:</strong> {payment_method}</p>
+            <p style="font-size:13px;"><strong>Payment Method:</strong> {payment_method} ending in {card_ending}</p>
 
-            <p><strong>Subtotal:</strong> ${price*quantity:,.2f}<br>
+            <p style="font-size:13px;"><strong>Subtotal:</strong> ${price*quantity:,.2f}<br>
             <strong>Delivery:</strong> $10.00<br>
             <strong>VAT:</strong> ${price*quantity*0.08:,.2f}<br>
             <strong>Total:</strong> ${(price*quantity*1.08 + 10):,.2f} incl. VAT</p>
 
-            <p><strong>Estimated delivery date:</strong> {shipping_date}</p>
-            <p><strong>Tracking Number:</strong> {tracking_number}</p>
+            <p style="font-size:13px;"><strong>Estimated Delivery:</strong> {shipping_date}</p>
+            <p style="font-size:13px;"><strong>Tracking Number:</strong> {tracking_number}</p>
 
-            <div style="border-top:1px solid #fff; padding-top:20px; margin-top:20px;">
+            <div style="border-top:1px solid #000; padding-top:20px; margin-top:20px;">
             <p style="font-size:14px;">DELIVERY ADDRESS</p>
-            <p>{customer_name}<br>{shipping_address}</p>
+            <p style="font-size:13px;">{customer_name}<br>{shipping_address}</p>
             </div>
 
             <p style="font-size:14px; text-align:center; margin-top:30px;">Thank you for choosing {brand}.</p>
 
-            <hr style="border:0; border-top:1px solid #fff; margin:20px 0;">
-            <p style="font-size:12px; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+            <p style="font-size:11px; color:#666; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
 
-            <div style="text-align:center; margin-top:20px; font-size:14px;">
-            <a href="https://www.{brand.lower()}.com/contact" style="color:#fff; text-decoration:underline; margin:0 10px;">Contact Us</a> |
-            <a href="mailto:support@{brand.lower()}.com" style="color:#fff; text-decoration:underline; margin:0 10px;">Email Support</a> |
-            <a href="tel:+1-800-555-0000" style="color:#fff; text-decoration:underline; margin:0 10px;">Call +1-800-555-0000</a>
+            <div style="text-align:center; margin-top:20px; font-size:13px;">
+            <a href="https://www.{brand.lower()}.com/contact" style="color:#000; text-decoration:underline; margin:0 10px;">Contact Us</a> |
+            <a href="mailto:support@{brand.lower()}.com" style="color:#000; text-decoration:underline; margin:0 10px;">Email Support</a> |
+            <a href="tel:+1-800-555-0000" style="color:#000; text-decoration:underline; margin:0 10px;">Call +1-800-555-0000</a>
             </div>
             </div>
             </body>
