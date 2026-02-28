@@ -132,7 +132,7 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)  # DIRECT send_modal - this is the fix
+        await interaction.response.send_modal(modal)  # DIRECT send_modal - no defer, no followup
 
 class BrandView(ui.View):
     def __init__(self, user_id):
@@ -159,13 +159,43 @@ async def generate(interaction: discord.Interaction):
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand, user_id):
+        super().__init__()
         self.brand = brand
         self.user_id = user_id
-        super().__init__()
-        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
-        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
-        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
-        self.shipping = ui.TextInput(label="Shipping address (optional, N/A)", style=discord.TextStyle.long, required=False, placeholder="N/A")
+
+        self.item = ui.TextInput(
+            label="Item name",
+            style=discord.TextStyle.long,
+            required=True,
+            placeholder="e.g. iPhone 16 Pro Max"
+        )
+
+        self.price = ui.TextInput(
+            label="Price in USD",
+            style=discord.TextStyle.short,
+            required=True,
+            placeholder="e.g. 1199.00"
+        )
+
+        self.quantity = ui.TextInput(
+            label="Quantity (default 1)",
+            style=discord.TextStyle.short,
+            required=False,
+            placeholder="1"
+        )
+
+        self.shipping = ui.TextInput(
+            label="Shipping address (optional, N/A)",
+            style=discord.TextStyle.long,
+            required=False,
+            placeholder="N/A"
+        )
+
+        # CRITICAL - MUST ADD ITEMS
+        self.add_item(self.item)
+        self.add_item(self.price)
+        self.add_item(self.quantity)
+        self.add_item(self.shipping)
 
     async def on_submit(self, interaction: discord.Interaction):
         email = user_emails.get(self.user_id)
