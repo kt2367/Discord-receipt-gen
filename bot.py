@@ -8,17 +8,14 @@ import re
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-# === CONFIG FROM ENV VARS ===
+# === CONFIG ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 if not all([BOT_TOKEN, SENDER_EMAIL, SENDGRID_API_KEY]):
-    print("Missing BOT_TOKEN, SENDER_EMAIL, or SENDGRID_API_KEY!")
+    print("Missing env vars!")
     exit(1)
-
-print("BOT STARTING - ENV VARS OK")
-print(f"SENDER_EMAIL: {SENDER_EMAIL}")
 
 ROLE_ID = 1472751333286350981
 
@@ -111,13 +108,6 @@ def get_state_from_address(address):
             return state
     return "GA"
 
-# Rough distance multiplier from Ohio (Akron) - higher for far states
-STATE_SHIPPING_MULTIPLIER = {
-    "OH": 1.0, "PA": 1.1, "MI": 1.1, "IN": 1.2, "KY": 1.2,
-    "NY": 1.3, "IL": 1.4, "GA": 1.5, "FL": 1.7, "TX": 1.9,
-    "CA": 2.5, "WA": 2.8, "default": 1.5
-}
-
 user_emails = {}
 
 intents = discord.Intents.default()
@@ -129,12 +119,15 @@ tree = app_commands.CommandTree(client)
 async def on_ready():
     await tree.sync()
     print(f"Bot online as {client.user} 🚀 - Ready for commands!")
+    # Keep-alive print for Railway
+    while True:
+        await asyncio.sleep(30)
+        print("Heartbeat - bot still alive")
 
 @tree.command(name="setup", description="Hook your email to your user (role required)")
 async def setup(interaction: discord.Interaction):
     if not any(r.id == ROLE_ID for r in interaction.user.roles):
-        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=Embed(title="Access Denied", description="You need the special role!", color=Colour.red()), ephemeral=True)
         return
     await interaction.response.send_modal(EmailModal())
 
@@ -143,45 +136,7 @@ class EmailModal(ui.Modal, title="Email Setup"):
 
     async def on_submit(self, interaction: discord.Interaction):
         user_emails[interaction.user.id] = self.email.value
-        embed = Embed(
-            title="Email Hooked",
-            description=f"Email {self.email.value} saved! Use /generate to create receipts.",
-            color=Colour.green()
-        )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-@tree.command(name="role", description="Give user the special role for a duration (e.g. 1d, 2w, 3m)")
-@app_commands.describe(user="The user to give role to", duration="Duration e.g. 1d 2w 3m")
-async def role(interaction: discord.Interaction, user: discord.Member, duration: str):
-    if not interaction.user.guild_permissions.manage_roles:
-        await interaction.response.send_message("You need manage roles permission.", ephemeral=True)
-        return
-
-    duration = duration.lower().strip()
-    if duration.endswith('d'):
-        days = int(duration[:-1])
-        delta = datetime.timedelta(days=days)
-    elif duration.endswith('w'):
-        weeks = int(duration[:-1])
-        delta = datetime.timedelta(weeks=weeks)
-    elif duration.endswith('m'):
-        months = int(duration[:-1])
-        delta = datetime.timedelta(days=months * 30)  # approx
-    else:
-        await interaction.response.send_message("Invalid format. Use e.g. 1d, 2w, 3m", ephemeral=True)
-        return
-
-    role = interaction.guild.get_role(ROLE_ID)
-    if not role:
-        await interaction.response.send_message("Role not found on server.", ephemeral=True)
-        return
-
-    await user.add_roles(role)
-    await interaction.response.send_message(f"Added role to {user.mention} for {duration}.", ephemeral=True)
-
-    await asyncio.sleep(delta.total_seconds())
-    await user.remove_roles(role)
-    print(f"Removed role from {user} after {duration}")
+        await interaction.response.send_message(embed=Embed(title="Email Hooked", description=f"Email {self.email.value} saved!", color=Colour.green()), ephemeral=True)
 
 class BrandButton(ui.Button):
     def __init__(self, brand, user_id):
@@ -193,21 +148,31 @@ class BrandButton(ui.Button):
         if interaction.user.id != self.user_id:
             await interaction.response.send_message("This isn't your button!", ephemeral=True)
             return
-        modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)
+
+        # Defer immediately to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            modal = GenerateModal(brand=self.brand, user_id=self.user_id)
+            await interaction.followup.send_modal(modal)
+        except Exception as e:
+            print(f"Button callback error: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description="Failed to open modal. Try again.", color=Colour.red()), ephemeral=True)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
-        super().__init__(timeout=300)
+        super().__init__(timeout=180)  # shorter timeout, but defer helps
         for brand in BRANDS:
             self.add_item(BrandButton(brand, user_id))
 
 @tree.command(name="generate", description="Generate a receipt (role required)")
 async def generate(interaction: discord.Interaction):
     if not any(r.id == ROLE_ID for r in interaction.user.roles):
-        embed = Embed(title="Access Denied", description="You need the special role!", color=Colour.red())
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=Embed(title="Access Denied", description="You need the special role!", color=Colour.red()), ephemeral=True)
         return
+
+    # Defer to give more time if needed
+    await interaction.response.defer(ephemeral=True)
 
     embed = Embed(
         title="Choose Your Brand",
@@ -216,165 +181,8 @@ async def generate(interaction: discord.Interaction):
     )
 
     view = BrandView(interaction.user.id)
-    await interaction.response.send_message(embed=embed, view=view)
+    await interaction.followup.send(embed=embed, view=view, ephemeral=True)
 
-class GenerateModal(ui.Modal, title="Receipt Details"):
-    def __init__(self, brand: str, user_id: int):
-        super().__init__(title=f"{brand} Receipt")
-        self.brand = brand
-        self.user_id = user_id
-
-        self.item = ui.TextInput(label="Item name", style=discord.TextStyle.paragraph, required=True, max_length=100)
-        self.price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20)
-        self.quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, max_length=5)
-        self.color = ui.TextInput(label="Color (Silver/Gold/etc)", style=discord.TextStyle.short, required=True, max_length=20, placeholder="Silver or Gold")
-        self.size = ui.TextInput(label="Size (e.g. 52)", style=discord.TextStyle.short, required=True, max_length=10, placeholder="52")
-        self.shipping_date = ui.TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
-
-        self.add_item(self.item)
-        self.add_item(self.price)
-        self.add_item(self.quantity)
-        self.add_item(self.color)
-        self.add_item(self.size)
-        self.add_item(self.shipping_date)
-
-    async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
-
-        email = user_emails.get(self.user_id)
-        if not email:
-            await interaction.followup.send(embed=Embed(title="No Email", description="Run /setup first!", color=Colour.red()), ephemeral=True)
-            return
-
-        try:
-            price = float(self.price.value.strip())
-            qty = int(self.quantity.value.strip() or 1)
-            color_choice = self.color.value.strip().title()
-            size_choice = self.size.value.strip()
-            est_date = self.shipping_date.value.strip()
-
-            customer_name = random.choice(FAKE_NAMES)
-            address = random.choice(FAKE_ADDRESSES)
-            state = get_state_from_address(address)
-            tax_rate = STATE_TAX_RATES.get(state, 0.0749)
-
-            subtotal = price * qty
-
-            # Realistic shipping: base + state-based surcharge + small random variance
-            base_shipping = random.uniform(8, 18)
-            multiplier = STATE_SHIPPING_MULTIPLIER.get(state, STATE_SHIPPING_MULTIPLIER["default"])
-            surcharge = random.uniform(0, 8) * (multiplier - 1)
-            variance = random.uniform(-3, 3)
-            delivery = round(base_shipping + surcharge + variance, 2)
-            delivery = max(5.00, delivery)  # no free/too low
-
-            sales_tax = round(subtotal * tax_rate, 2)
-            total = round(subtotal + delivery + sales_tax, 2)
-
-            order_id = f"{self.brand.upper()}-{random.randint(1000000000000000,9999999999999999)}"
-            tracking = f"1Z{random.randint(1000000000,9999999999)}"
-            payment = random.choice(FAKE_PAYMENT_METHODS)
-            gift = random.choice(["Gift wrapping added", ""])
-
-            html_body = f"""
-            <html>
-            <body style="font-family: Georgia, 'Times New Roman', serif; background:#f8f8f8; color:#111; margin:0; padding:0; font-size:11px; line-height:1.4;">
-            <div style="max-width:580px; margin:20px auto; background:#fff; border:1px solid #ccc;">
-                <!-- Top Banner with fancy font -->
-                <div style="background: linear-gradient(to right, #8B0000, #000000); padding:40px 20px; text-align:center;">
-                    <h1 style="color:#fff; margin:0; font-size:42px; font-weight:400; letter-spacing:4px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style:italic;">{self.brand}</h1>
-                </div>
-
-                <div style="padding:25px 30px;">
-                    <h2 style="text-align:center; font-size:16px; margin:0 0 15px;">Acknowledgment of your order</h2>
-                    <p style="text-align:center; margin:0 0 20px;">Dear {customer_name},</p>
-                    <p style="margin:0 0 15px;">Thank you for shopping online with {self.brand}.</p>
-                    <p style="margin:0 0 15px;">We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
-                    <p style="font-style:italic; font-size:10px; color:#555; margin:0 0 20px;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
-
-                    <p style="text-align:center; margin:10px 0;"><a href="#" style="color:#000; text-decoration:underline;">To track your order online from your My{self.brand} account, click here: track order</a></p>
-
-                    <div style="background:#000; color:#fff; padding:12px; text-align:center; margin:20px 0;">
-                        ORDER N° {order_id}
-                    </div>
-
-                    <div style="background:#111; color:#eee; padding:15px; margin:15px 0;">
-                        <p style="margin:0 0 5px;"><strong>{self.item.value}</strong></p>
-                        <p style="margin:0 0 5px;">Color: {color_choice}</p>
-                        <p style="margin:0 0 5px;">Size: {size_choice}</p>
-                        <p style="margin:0 0 5px;">{gift}</p>
-                        <p style="margin:0 0 5px;">Shipping Cost: ${delivery:,.2f}</p>
-                        <p style="text-align:right; margin:5px 0 0;">${price:,.2f} x {qty}</p>
-                    </div>
-
-                    <table style="width:100%; font-size:11px; border-collapse:collapse;">
-                        <tr><td style="padding:4px 0;">Estimated delivery date:</td><td style="text-align:right;">{est_date}</td></tr>
-                        <tr><td style="padding:4px 0;">Payment Method:</td><td style="text-align:right;">{payment}</td></tr>
-                        <tr><td colspan="2" style="padding:10px 0 0; border-top:1px solid #aaa;"></td></tr>
-                        <tr><td style="padding:4px 0;"><strong>SUBTOTAL</strong> incl. tax</td><td style="text-align:right;">${subtotal:,.2f}</td></tr>
-                        <tr><td style="padding:4px 0;"><strong>DELIVERY</strong> incl. tax</td><td style="text-align:right;">${delivery:,.2f}</td></tr>
-                        <tr><td style="padding:4px 0;"><strong>Sales Tax</strong> ({tax_rate*100:.1f}%)</td><td style="text-align:right;">${sales_tax:,.2f}</td></tr>
-                        <tr style="font-weight:bold; font-size:12px;"><td style="padding:8px 0 0;">TOTAL</td><td style="text-align:right; padding:8px 0 0;">${total:,.2f} incl. tax</td></tr>
-                    </table>
-
-                    <div style="margin:30px 0 0; padding:0; border:1px solid #000;">
-                        <table style="width:100%; font-size:11px; color:#fff; background:#000;">
-                            <tr style="background:#800000;">
-                                <th style="padding:8px;">DELIVERY ADDRESS</th>
-                                <th style="padding:8px;">BILLING ADDRESS</th>
-                                <th style="padding:8px;">NOTE</th>
-                            </tr>
-                            <tr style="color:#000; background:#fff;">
-                                <td style="padding:8px;">{customer_name}<br>{address}</td>
-                                <td style="padding:8px;">{customer_name}<br>{address}</td>
-                                <td style="padding:8px;">Shipping preferences customized during checkout.</td>
-                            </tr>
-                        </table>
-                    </div>
-
-                    <p style="text-align:center; margin:20px 0; font-size:12px;">If you need further information please visit the <a href="#" style="color:#000; text-decoration:underline;">Contact us</a> page.</p>
-
-                    <div style="text-align:center; background:#111; color:#aaa; padding:10px; font-size:10px;">
-                        Stay Connected<br>
-                        Latest news • {self.brand} Official Channel • Mobile Applications
-                    </div>
-
-                    <div style="text-align:center; font-size:10px; color:#555; margin:15px 0;">
-                        TERMS OF USE • CONDITIONS OF SALE • CONTACT AN AMBASSADOR
-                    </div>
-
-                    <div style="font-size:10px; color:#444; text-align:center; line-height:1.3;">
-                        RLG Europe BV<br>PO Box 2967<br>NL-1000 CZ Amsterdam<br>Netherlands<br><br>
-                        {self.brand} Customer Contact Centre<br>+41 22 334 18 123<br>Email: CustomerService.RNE@{self.brand.lower()}.com
-                    </div>
-
-                    <p style="font-size:9px; color:#777; text-align:center; margin:20px 0;">
-                        By clicking the links provided, you consent to our Privacy Notice & Conditions of Sale.<br>
-                        Copyright © 2025 {self.brand}
-                    </p>
-                </div>
-            </body>
-            </html>
-            """
-
-            message = Mail(
-                from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
-                to_emails=email,
-                subject=f"Your {self.brand} Order Confirmation",
-                html_content=html_body
-            )
-
-            sg = SendGridAPIClient(SENDGRID_API_KEY)
-            response = sg.send(message)
-            print(f"SendGrid success - status: {response.status_code}")
-
-            await interaction.followup.send(
-                embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()),
-                ephemeral=True
-            )
-
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+# Your GenerateModal and on_submit go here - keep them as is from previous version
 
 client.run(BOT_TOKEN)
