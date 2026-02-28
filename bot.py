@@ -9,7 +9,7 @@ from sendgrid.helpers.mail import Mail
 
 # === CONFIG FROM ENV VARS ===
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")  # Your verified SendGrid sender email
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 if not all([BOT_TOKEN, SENDER_EMAIL, SENDGRID_API_KEY]):
@@ -29,12 +29,12 @@ BRANDS = [
 
 # Brand display names for inbox "From" (shows as "Cartier Order Confirmation" etc.)
 brand_display = {
-    'Cartier': "Cartier Order Confirmation",
+    'Cartier': "Cartier",
     'Denim Tears': "Denim Tears",
     'Ksubi': "Ksubi",
     'Balenciaga': "Balenciaga",
     'Sp5der': "Sp5der",
-    'Nike': "Nike Order Confirmation",
+    'Nike': "Nike",
     'Adidas': "adidas",
     'Lululemon': "lululemon athletica",
     'Lanvin': "Lanvin",
@@ -131,7 +131,7 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)  # Direct send_modal
+        await interaction.response.send_modal(modal)
 
 class BrandView(ui.View):
     def __init__(self, user_id):
