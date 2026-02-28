@@ -28,21 +28,41 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-brand_display = {
-    'Cartier': "Cartier Order Confirmation",
-    'Denim Tears': "Denim Tears",
-    'Ksubi': "Ksubi",
-    'Balenciaga': "Balenciaga",
-    'Sp5der': "Sp5der",
-    'Nike': "Nike Order Confirmation",
-    'Adidas': "adidas",
-    'Lululemon': "lululemon athletica",
-    'Lanvin': "Lanvin",
-    'Creed': "Creed Boutique",
-    'Baccarat': "Baccarat",
-    'Sephora': "Sephora",
-    'Apple': "Apple Store",
+# Brand display names + real logo URLs
+brand_info = {
+    'Cartier': {"display": "Cartier Concierge", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
+    'Denim Tears': {"display": "Denim Tears", "logo": "https://i.imgur.com/denimtearslogo.png"},
+    'Ksubi': {"display": "Ksubi", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
+    'Balenciaga': {"display": "Balenciaga", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
+    'Sp5der': {"display": "Sp5der", "logo": "https://i.imgur.com/sp5derlogo.png"},
+    'Nike': {"display": "Nike", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png"},
+    'Adidas': {"display": "adidas", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png"},
+    'Lululemon': {"display": "lululemon athletica", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
+    'Lanvin': {"display": "Lanvin", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
+    'Creed': {"display": "Creed Boutique", "logo": "https://i.imgur.com/creedlogo.png"},
+    'Baccarat': {"display": "Baccarat", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
+    'Sephora': {"display": "Sephora", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png"},
+    'Apple': {"display": "Apple Store", "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png"},
 }
+
+# Fake data for randomization
+FAKE_NAMES = [
+    "Alex Rivera", "Jordan Lee", "Taylor Brooks", "Morgan Ellis", "Casey Quinn",
+    "Riley Harper", "Jamie Knox", "Parker Reese", "Cameron Blake", "Avery Lane"
+]
+
+FAKE_ADDRESSES = [
+    "123 Main St, New York, NY 10001",
+    "456 Oak Ave, Los Angeles, CA 90001",
+    "789 Pine Rd, Chicago, IL 60601",
+    "321 Elm St, Miami, FL 33101",
+    "654 Maple Dr, Houston, TX 77001",
+    "987 Cedar Ln, Seattle, WA 98101",
+    "147 Birch Blvd, Boston, MA 02101",
+    "258 Willow Way, Denver, CO 80201",
+    "369 Spruce Ct, Atlanta, GA 30301",
+    "741 Aspen Pl, Phoenix, AZ 85001"
+]
 
 user_emails = {}
 
@@ -142,21 +162,21 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             max_length=5
         )
 
-        self.shipping = discord.ui.TextInput(
-            label="Shipping address (optional, N/A)",
-            style=discord.TextStyle.paragraph,
-            placeholder="N/A",
-            required=False,
-            max_length=300
+        self.shipping_date = discord.ui.TextInput(
+            label="Shipping Date",
+            style=discord.TextStyle.short,
+            placeholder="e.g. March 15, 2026",
+            required=True,
+            max_length=30
         )
 
         self.add_item(self.item)
         self.add_item(self.price)
         self.add_item(self.quantity)
-        self.add_item(self.shipping)
+        self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)  # Acknowledge immediately
+        await interaction.response.defer(ephemeral=True)
 
         email = user_emails.get(self.user_id)
         if not email:
@@ -174,35 +194,49 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         try:
             price = float(self.price.value.strip())
             quantity = int(self.quantity.value.strip() or 1)
-            shipping = self.shipping.value.strip() or "N/A"
-            item = self.item.value.strip()
+            shipping_date = self.shipping_date.value.strip()
+
+            # Randomized realism
+            customer_name = random.choice(FAKE_NAMES)
+            shipping_address = random.choice(FAKE_ADDRESSES)
+            order_id = f"{brand.upper()}-{random.randint(100000, 999999)}-{random.randint(1000, 9999)}"
+            tracking_number = f"1Z{random.randint(1000000000,9999999999)}"
 
             dm = await interaction.user.create_dm()
             embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
             await dm.send(embed=embed)
 
-            # Define variables FIRST
-            order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
-            today = datetime.date.today().strftime("%B %d, %Y")
-            subtotal = price * quantity
-            tax = subtotal * 0.08
-            total = subtotal + tax
-
             html_body = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; padding:20px; background:#fff; color:#000;">
-            <h2 style="color:#000;">{brand} Order Confirmation</h2>
-            <p>Order ID: {order_id}<br>Date: {today}<br>Billed to: {email}</p>
-            <p>Item: {item} x{quantity} - ${price:,.2f}</p>
-            <p>Subtotal: ${subtotal:,.2f}<br>Tax: ${tax:,.2f}<br>Total: ${total:,.2f}</p>
-            <p>Shipping: {shipping}</p>
+            <body style="font-family: Arial, sans-serif; padding:30px; background:#f8f8f8; color:#000;">
+            <div style="max-width:600px; margin:auto; background:#fff; padding:30px; border:1px solid #ddd;">
+            <img src="{brand_info[brand]['logo']}" style="max-height:80px; display:block; margin:0 auto 20px;" alt="{brand}">
+            <h2 style="text-align:center; color:#000;">{brand} Order Confirmation</h2>
+            <hr style="border:0; border-top:1px solid #eee;">
+            <p><strong>Order ID:</strong> {order_id}<br>
+            <strong>Date:</strong> {datetime.date.today().strftime("%B %d, %Y")}<br>
+            <strong>Billed to:</strong> {email}<br>
+            <strong>Shipping to:</strong> {customer_name}<br>{shipping_address}</p>
+            <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+            <tr style="background:#f0f0f0;"><th style="padding:10px; text-align:left;">Item</th><th style="padding:10px; text-align:right;">Qty</th><th style="padding:10px; text-align:right;">Price</th></tr>
+            <tr><td style="padding:10px;">{self.item.value.strip()}</td><td style="padding:10px; text-align:right;">{quantity}</td><td style="padding:10px; text-align:right;">${price:,.2f}</td></tr>
+            </table>
+            <p><strong>Subtotal:</strong> ${price*quantity:,.2f}<br>
+            <strong>Tax:</strong> ${price*quantity*0.08:,.2f}<br>
+            <strong>Total:</strong> ${(price*quantity*1.08):,.2f}</p>
+            <p><strong>Shipping Date:</strong> {shipping_date}<br>
+            <strong>Tracking Number:</strong> {tracking_number}<br>
+            <strong>Estimated Delivery:</strong> {shipping_date}</p>
             <p>Thank you for shopping with {brand}!</p>
+            <hr style="border:0; border-top:1px solid #eee;">
+            <p style="font-size:12px; color:#666; text-align:center;">Questions? Contact {brand_display[brand]} Support • This is an automated receipt.</p>
+            </div>
             </body>
             </html>
             """
 
             message = Mail(
-                from_email=(SENDER_EMAIL, brand),
+                from_email=(SENDER_EMAIL, brand_display.get(brand, brand)),
                 to_emails=email,
                 subject=f"Your {brand} Order Confirmation",
                 html_content=html_body
@@ -221,7 +255,6 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
                 ephemeral=True
             )
 
-            # Delete original buttons message after success
             await interaction.message.delete()
 
         except Exception as e:
