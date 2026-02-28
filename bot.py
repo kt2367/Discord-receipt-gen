@@ -121,7 +121,7 @@ async def setup(interaction: discord.Interaction):
     await interaction.response.send_modal(EmailModal())
 
 class GenerateModal(ui.Modal, title="Generate Receipt"):
-    brand = ui.TextInput(label="Brand", style=discord.TextStyle.short, required=True, placeholder=f"Available: {', '.join(BRANDS)}")
+    brand = ui.TextInput(label="Brand", style=discord.TextStyle.short, required=True, placeholder=f"Available brands: {', '.join(BRANDS)}")
     item = ui.TextInput(label="Item name", style=discord.TextStyle.long, required=True, placeholder="e.g. iPhone 16 Pro Max")
     price = ui.TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, placeholder="e.g. 1199.00")
     quantity = ui.TextInput(label="Quantity (default 1)", style=discord.TextStyle.short, required=False, placeholder="1")
