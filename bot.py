@@ -27,86 +27,38 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand info with logos + dummy contacts for EVERY brand (no KeyError)
+# Brand display names for inbox "From" (shows as "Cartier Order Confirmation" etc.)
+brand_display = {
+    'Cartier': "Cartier Order Confirmation",
+    'Denim Tears': "Denim Tears",
+    'Ksubi': "Ksubi",
+    'Balenciaga': "Balenciaga",
+    'Sp5der': "Sp5der",
+    'Nike': "Nike Order Confirmation",
+    'Adidas': "adidas",
+    'Lululemon': "lululemon athletica",
+    'Lanvin': "Lanvin",
+    'Creed': "Creed Boutique",
+    'Baccarat': "Baccarat",
+    'Sephora': "Sephora",
+    'Apple': "Apple Store",
+}
+
+# Brand logos (public URLs)
 brand_info = {
-    'Cartier': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png",
-        "website": "https://www.cartier.com/contact-us",
-        "email": "support@cartier.com",
-        "phone": "+1-800-227-8437"
-    },
-    'Denim Tears': {
-        "logo": "https://i.imgur.com/denimtearslogo.png",
-        "website": "https://denimtears.com/pages/contact",
-        "email": "support@denimtears.com",
-        "phone": "+1-800-555-1234"
-    },
-    'Ksubi': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png",
-        "website": "https://ksubi.com/pages/contact",
-        "email": "support@ksubi.com",
-        "phone": "+1-800-555-5678"
-    },
-    'Balenciaga': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png",
-        "website": "https://www.balenciaga.com/us/contact-us",
-        "email": "support@balenciaga.com",
-        "phone": "+1-800-555-9012"
-    },
-    'Sp5der': {
-        "logo": "https://i.imgur.com/sp5derlogo.png",
-        "website": "https://sp5der.com/pages/contact",
-        "email": "support@sp5der.com",
-        "phone": "+1-800-555-3456"
-    },
-    'Nike': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png",
-        "website": "https://www.nike.com/help",
-        "email": "support@nike.com",
-        "phone": "+1-800-344-6453"
-    },
-    'Adidas': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png",
-        "website": "https://www.adidas.com/us/help",
-        "email": "support@adidas.com",
-        "phone": "+1-800-982-9337"
-    },
-    'Lululemon': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png",
-        "website": "https://shop.lululemon.com/contact",
-        "email": "support@lululemon.com",
-        "phone": "+1-877-263-9300"
-    },
-    'Lanvin': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png",
-        "website": "https://www.lanvin.com/contact-us",
-        "email": "support@lanvin.com",
-        "phone": "+1-800-555-7890"
-    },
-    'Creed': {
-        "logo": "https://i.imgur.com/creedlogo.png",
-        "website": "https://www.creedboutique.com/contact",
-        "email": "info@creedboutique.com",
-        "phone": "+1-800-555-2345"
-    },
-    'Baccarat': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png",
-        "website": "https://www.baccarat.com/contact-us",
-        "email": "service@baccarat.com",
-        "phone": "+1-800-555-6789"
-    },
-    'Sephora': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png",
-        "website": "https://www.sephora.com/beauty/customer-service",
-        "email": "customerservice@sephora.com",
-        "phone": "+1-877-737-4672"
-    },
-    'Apple': {
-        "logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png",
-        "website": "https://support.apple.com/contact",
-        "email": "support@apple.com",
-        "phone": "+1-800-275-2273"
-    }
+    'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
+    'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
+    'Ksubi': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
+    'Balenciaga': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
+    'Sp5der': {"logo": "https://i.imgur.com/sp5derlogo.png"},
+    'Nike': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png"},
+    'Adidas': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png"},
+    'Lululemon': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
+    'Lanvin': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
+    'Creed': {"logo": "https://i.imgur.com/creedlogo.png"},
+    'Baccarat': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
+    'Sephora': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png"},
+    'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png"},
 }
 
 # Fake data for randomization
@@ -179,7 +131,7 @@ class BrandButton(ui.Button):
             return
 
         modal = GenerateModal(brand=self.brand, user_id=self.user_id)
-        await interaction.response.send_modal(modal)
+        await interaction.response.send_modal(modal)  # Direct send_modal
 
 class BrandView(ui.View):
     def __init__(self, user_id):
@@ -212,7 +164,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.item = discord.ui.TextInput(
             label="Item name",
             style=discord.TextStyle.paragraph,
-            placeholder="e.g. Trinity ring",
+            placeholder="e.g. iPhone 16 Pro Max",
             required=True,
             max_length=100
         )
@@ -220,7 +172,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         self.price = discord.ui.TextInput(
             label="Price in USD",
             style=discord.TextStyle.short,
-            placeholder="e.g. 790.00",
+            placeholder="e.g. 1199.00",
             required=True,
             max_length=20
         )
@@ -270,7 +222,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             # Randomized realism
             customer_name = random.choice(FAKE_NAMES)
             shipping_address = random.choice(FAKE_ADDRESSES)
-            order_id = f"{brand.upper()}-{random.randint(1000000000000000000,9999999999999999999)}"
+            order_id = f"{brand.upper()}-{random.randint(10000000,99999999)}"
             tracking_number = f"1Z{random.randint(1000000000,9999999999)}"
             payment_method = random.choice(FAKE_PAYMENT_METHODS)
 
@@ -280,49 +232,28 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
 
             html_body = f"""
             <html>
-            <body style="font-family: Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0;">
-            <div style="max-width:600px; margin:0 auto; padding:20px; border:1px solid #ddd;">
-            <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-width:200px; display:block; margin:0 auto 20px;" alt="{brand}">
-            <h2 style="text-align:center; color:#000; margin-bottom:10px;">Acknowledgment of your order</h2>
-            <p style="text-align:center; font-size:16px;">Dear {customer_name},</p>
-            <p style="font-size:14px;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
-            <p style="font-size:14px;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
-            <p style="text-align:center; font-size:14px;"><a href="{brand_info.get(brand, {'website': '#'})['website']}" style="color:#000; text-decoration:underline;">To track your order online from your My{brand} account, click here: track order</a></p>
-
-            <div style="background:#000; color:#fff; padding:10px; text-align:center; margin:20px 0;">
-            <strong>ORDER N° {order_id}</strong>
-            </div>
-
+            <body style="font-family: Arial, sans-serif; padding:30px; background:#f8f8f8; color:#000;">
+            <div style="max-width:600px; margin:auto; background:#fff; padding:30px; border:1px solid #ddd;">
+            <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-height:80px; display:block; margin:0 auto 20px;" alt="{brand}">
+            <h2 style="text-align:center; color:#000;">{brand} Order Confirmation</h2>
+            <hr style="border:0; border-top:1px solid #eee;">
+            <p><strong>Order ID:</strong> {order_id}<br>
+            <strong>Date:</strong> {datetime.date.today().strftime("%B %d, %Y")}<br>
+            <strong>Billed to:</strong> {email}<br>
+            <strong>Shipping to:</strong> {customer_name}<br>{shipping_address}</p>
             <table style="width:100%; border-collapse:collapse; margin:20px 0;">
             <tr style="background:#f0f0f0;"><th style="padding:10px; text-align:left;">Item</th><th style="padding:10px; text-align:right;">Qty</th><th style="padding:10px; text-align:right;">Price</th></tr>
             <tr><td style="padding:10px;">{self.item.value.strip()}</td><td style="padding:10px; text-align:right;">{quantity}</td><td style="padding:10px; text-align:right;">${price:,.2f}</td></tr>
             </table>
-
-            <p style="font-size:14px;"><strong>Payment Method:</strong> {payment_method}</p>
-
             <p><strong>Subtotal:</strong> ${price*quantity:,.2f}<br>
-            <strong>Delivery:</strong> $10.00<br>
-            <strong>VAT:</strong> ${price*quantity*0.08:,.2f}<br>
-            <strong>Total:</strong> ${(price*quantity*1.08 + 10):,.2f} incl. VAT</p>
-
-            <p><strong>Estimated delivery date:</strong> {shipping_date}</p>
-            <p><strong>Tracking Number:</strong> {tracking_number}</p>
-
-            <div style="border-top:1px solid #000; padding-top:20px; margin-top:20px;">
-            <p style="font-size:14px;">DELIVERY ADDRESS</p>
-            <p>{customer_name}<br>{shipping_address}</p>
-            </div>
-
-            <p style="font-size:14px; text-align:center; margin-top:30px;">Thank you for shopping with {brand}!</p>
-
+            <strong>Tax:</strong> ${price*quantity*0.08:,.2f}<br>
+            <strong>Total:</strong> ${(price*quantity*1.08):,.2f}</p>
+            <p><strong>Shipping Date:</strong> {shipping_date}<br>
+            <strong>Tracking Number:</strong> {tracking_number}<br>
+            <strong>Payment Method:</strong> {payment_method}</p>
+            <p>Thank you for shopping with {brand}!</p>
             <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
             <p style="font-size:12px; color:#666; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
-
-            <div style="text-align:center; margin-top:20px; font-size:14px;">
-            <a href="{brand_info.get(brand, {'website': '#'})['website']}" style="color:#000; text-decoration:underline; margin:0 10px;">Contact Us</a> |
-            <a href="mailto:{brand_info.get(brand, {'email': 'support@brand.com'})['email']}" style="color:#000; text-decoration:underline; margin:0 10px;">Email Support</a> |
-            <a href="tel:{brand_info.get(brand, {'phone': '+1-800-555-0000'})['phone']}" style="color:#000; text-decoration:underline; margin:0 10px;">Call {brand_info.get(brand, {'phone': '+1-800-555-0000'})['phone']}</a>
-            </div>
             </div>
             </body>
             </html>
