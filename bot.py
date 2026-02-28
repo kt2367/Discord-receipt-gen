@@ -4,6 +4,7 @@ import datetime
 import random
 import asyncio
 import os
+import re
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
@@ -27,7 +28,7 @@ BRANDS = [
     'Baccarat', 'Sephora', 'Apple'
 ]
 
-# Brand display names for inbox "From" (shows as "Cartier <your@email.com>")
+# Brand display names for inbox "From"
 brand_display = {
     'Cartier': "Cartier",
     'Denim Tears': "Denim Tears",
@@ -44,7 +45,7 @@ brand_display = {
     'Apple': "Apple Store",
 }
 
-# Brand logos (real public URLs)
+# Brand logos (public URLs)
 brand_info = {
     'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/512px-Cartier_logo.svg.png"},
     'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
@@ -61,14 +62,14 @@ brand_info = {
     'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/512px-Apple_logo_black.svg.png"},
 }
 
-# Fake data for randomization
+# Fake data
 FAKE_NAMES = [
     "George Love", "Alex Rivera", "Jordan Lee", "Taylor Brooks", "Morgan Ellis",
     "Casey Quinn", "Riley Harper", "Jamie Knox", "Parker Reese", "Cameron Blake"
 ]
 
 FAKE_ADDRESSES = [
-    "030 Tyler Ridge, East Roberts Shire, United States",
+    "030 Tyler Ridge, East Roberts Shire, GA 30301",
     "123 Main St, New York, NY 10001",
     "456 Oak Ave, Los Angeles, CA 90001",
     "789 Pine Rd, Chicago, IL 60601",
@@ -77,17 +78,38 @@ FAKE_ADDRESSES = [
     "987 Cedar Ln, Seattle, WA 98101",
     "147 Birch Blvd, Boston, MA 02101",
     "258 Willow Way, Denver, CO 80201",
-    "369 Spruce Ct, Atlanta, GA 30301"
+    "369 Spruce Ct, Atlanta, GA 30301",
+    "1122 Bourbon St, New Orleans, LA 70116",  # high tax example
+    "4455 Massachusetts Ave, Boston, MA 02115"
 ]
 
 FAKE_PAYMENT_METHODS = [
-    "Visa ending in 4823",
-    "Mastercard ending in 7192",
-    "Apple Pay",
-    "Cash on Delivery",
-    "Visa ending in 5634",
-    "Mastercard ending in 2941"
+    "Visa ending in 4823", "Mastercard ending in 7192", "Amex ending in 1122",
+    "Discover ending in 4456", "Apple Pay", "PayPal"
 ]
+
+# 2026 Combined sales tax rates (Tax Foundation Jan 2026 - population-weighted avg)
+STATE_TAX_RATES = {
+    "AL": 0.0946, "AK": 0.0182, "AZ": 0.0852, "AR": 0.0946, "CA": 0.0899,
+    "CO": 0.0789, "CT": 0.0635, "DE": 0.0000, "FL": 0.0698, "GA": 0.0749,
+    "HI": 0.0450, "ID": 0.0603, "IL": 0.0896, "IN": 0.0700, "IA": 0.0694,
+    "KS": 0.0869, "KY": 0.0600, "LA": 0.1011, "ME": 0.0550, "MD": 0.0600,
+    "MA": 0.0625, "MI": 0.0600, "MN": 0.0814, "MS": 0.0706, "MO": 0.0844,
+    "MT": 0.0000, "NE": 0.0698, "NV": 0.0824, "NH": 0.0000, "NJ": 0.0660,
+    "NM": 0.0767, "NY": 0.0854, "NC": 0.0700, "ND": 0.0709, "OH": 0.0729,
+    "OK": 0.0906, "OR": 0.0000, "PA": 0.0634, "RI": 0.0700, "SC": 0.0749,
+    "SD": 0.0611, "TN": 0.0961, "TX": 0.0820, "UT": 0.0742, "VT": 0.0639,
+    "VA": 0.0577, "WA": 0.0951, "WV": 0.0659, "WI": 0.0572, "WY": 0.0556,
+    "DC": 0.0600
+}
+
+def get_state_from_address(address):
+    addr_upper = address.upper()
+    matches = re.findall(r'\b([A-Z]{2})\b', addr_upper)
+    for state in reversed(matches):
+        if state in STATE_TAX_RATES:
+            return state
+    return "GA"  # fallback
 
 user_emails = {}
 
@@ -159,7 +181,7 @@ async def generate(interaction: discord.Interaction):
 
 class GenerateModal(ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
-        super().__init__(title="Receipt Details")
+        super().__init__(title=f"{brand} Receipt Details")
         self.brand = brand
         self.user_id = user_id
 
@@ -172,7 +194,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         )
 
         self.price = discord.ui.TextInput(
-            label="Price in USD",
+            label="Price per unit in USD",
             style=discord.TextStyle.short,
             placeholder="e.g. 790.00",
             required=True,
@@ -188,7 +210,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         )
 
         self.shipping_date = discord.ui.TextInput(
-            label="Shipping Date",
+            label="Estimated Delivery Date",
             style=discord.TextStyle.short,
             placeholder="e.g. March 15, 2026",
             required=True,
@@ -206,16 +228,11 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
         email = user_emails.get(self.user_id)
         if not email:
             await interaction.followup.send(
-                embed=Embed(
-                    title="No Email Hooked",
-                    description="Run /setup first to hook your email!",
-                    color=Colour.red()
-                ),
+                embed=Embed(title="No Email Hooked", description="Run /setup first!", color=Colour.red()),
                 ephemeral=True
             )
             return
 
-        brand = self.brand
         try:
             price = float(self.price.value.strip())
             quantity = int(self.quantity.value.strip() or 1)
@@ -224,113 +241,95 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             # Randomized realism
             customer_name = random.choice(FAKE_NAMES)
             shipping_address = random.choice(FAKE_ADDRESSES)
-            order_id = f"{brand.upper()}-{random.randint(1000000000000000000,9999999999999999999)}"
-            tracking_number = f"1Z{random.randint(1000000000,9999999999)}"
+            state = get_state_from_address(shipping_address)
+            tax_rate = STATE_TAX_RATES.get(state, 0.0749)  # GA fallback
+
+            subtotal = price * quantity
+            delivery = round(random.uniform(0, 25), 2)  # realistic shipping $0–25
+            sales_tax = round(subtotal * tax_rate, 2)
+            total = round(subtotal + delivery + sales_tax, 2)
+
+            order_id = f"{self.brand.upper()}-{random.randint(1000000000000000, 9999999999999999)}"
+            tracking_number = f"1Z{random.randint(1000000000, 9999999999)}{random.randint(10000,99999)}"
             payment_method = random.choice(FAKE_PAYMENT_METHODS)
-            card_ending = random.randint(1000, 9999)
             gift_wrapping = random.choice(["Gift wrapping added", "No gift wrapping"])
 
             dm = await interaction.user.create_dm()
-            embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
+            embed = Embed(title="Sending Receipt", description=f"Generating & sending {self.brand} receipt to {email}...", color=Colour.orange())
             await dm.send(embed=embed)
 
+            # Hyper-realistic HTML (clean, brand-agnostic but looks luxury)
             html_body = f"""
             <html>
-            <body style="font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0; font-size:11px; line-height:1.5;">
-            <div style="max-width:600px; margin:0 auto; padding:20px; border:1px solid #ddd;">
-            <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-width:180px; display:block; margin:0 auto 20px;" alt="{brand}">
-            <h2 style="text-align:center; color:#000; margin-bottom:10px; font-size:16px;">Acknowledgment of your order</h2>
-            <p style="text-align:center; font-size:14px;">Dear {customer_name},</p>
-            <p style="font-size:13px;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
+            <body style="font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0; font-size:12px; line-height:1.6;">
+            <div style="max-width:600px; margin:0 auto; padding:30px 20px; border:1px solid #e0e0e0; background:#fff;">
+            <img src="{brand_info.get(self.brand, {'logo': ''})['logo']}" style="max-width:160px; display:block; margin:0 auto 25px;" alt="{self.brand}">
+            <h2 style="text-align:center; color:#000; margin:0 0 15px; font-size:18px; font-weight:500;">Order Acknowledgment</h2>
+            <p style="text-align:center; font-size:14px; margin:0 0 20px;">Dear {customer_name},</p>
+            <p style="text-align:center; font-size:13px; margin:0 0 25px;">Thank you for shopping with {self.brand}. We are pleased to confirm receipt of your order. Please review the details below.</p>
 
-            <div style="background:#C41E3A; color:#fff; padding:12px; text-align:center; margin:20px 0; font-size:18px; font-weight:bold;">
+            <div style="background:#000; color:#fff; padding:12px; text-align:center; margin:20px 0; font-size:16px; font-weight:bold;">
             ORDER N° {order_id}
             </div>
 
-            <div style="background:#000; color:#fff; padding:15px; margin:20px 0;">
-            <p style="font-size:14px; margin:0;">{self.item.value.strip()}</p>
-            <p style="font-size:13px; margin:5px 0;">{gift_wrapping}</p>
-            <p style="font-size:13px; margin:0; text-align:right;">${price:,.2f} x {quantity}</p>
+            <div style="margin:20px 0; padding:15px; background:#f9f9f9; border:1px solid #eee;">
+            <p style="font-size:14px; margin:0 0 8px;"><strong>{self.item.value.strip()}</strong></p>
+            <p style="font-size:13px; margin:0 0 8px;">{gift_wrapping}</p>
+            <p style="font-size:13px; margin:0; text-align:right;">${price:,.2f} × {quantity}</p>
             </div>
 
-            <p style="font-size:13px; margin:10px 0;"><strong>Subtotal:</strong> ${price*quantity:,.2f}</p>
-            <p style="font-size:13px; margin:5px 0;"><strong>Delivery:</strong> $10.00</p>
-            <p style="font-size:13px; margin:5px 0;"><strong>VAT:</strong> ${price*quantity*0.08:,.2f}</p>
-            <p style="font-size:13px; margin:5px 0;"><strong>Total:</strong> ${(price*quantity*1.08 + 10):,.2f} incl. VAT</p>
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
+            <tr><td style="padding:6px 0;"><strong>Subtotal</strong></td><td style="text-align:right;">${subtotal:,.2f}</td></tr>
+            <tr><td style="padding:6px 0;"><strong>Delivery</strong></td><td style="text-align:right;">${delivery:,.2f}</td></tr>
+            <tr><td style="padding:6px 0;"><strong>Sales Tax</strong> ({tax_rate*100:.2f}% for {state})</td><td style="text-align:right;">${sales_tax:,.2f}</td></tr>
+            <tr style="font-weight:bold; border-top:1px solid #000;"><td style="padding:10px 0 0;">Total</td><td style="text-align:right; padding:10px 0 0;">${total:,.2f}</td></tr>
+            </table>
 
-            <p style="font-size:13px; margin:10px 0;"><strong>Estimated delivery date:</strong> {shipping_date}</p>
-            <p style="font-size:13px; margin:5px 0;"><strong>Tracking Number:</strong> {tracking_number}</p>
-            <p style="font-size:13px; margin:5px 0;"><strong>Payment Method:</strong> {payment_method} ending in {card_ending}</p>
+            <p style="font-size:13px; margin:20px 0 10px;"><strong>Estimated Delivery:</strong> {shipping_date}</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>Tracking Number:</strong> {tracking_number} (available once shipped)</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>Payment Method:</strong> {payment_method}</p>
 
-            <div style="border-top:1px solid #000; padding-top:20px; margin-top:20px;">
-            <p style="font-size:14px;">DELIVERY ADDRESS</p>
-            <p style="font-size:13px;">{customer_name}<br>{shipping_address}</p>
+            <div style="margin-top:25px; padding-top:20px; border-top:1px solid #eee;">
+            <p style="font-size:14px; margin:0 0 8px; font-weight:500;">DELIVERY ADDRESS</p>
+            <p style="font-size:13px; margin:0;">{customer_name}<br>{shipping_address}</p>
             </div>
 
-            <p style="font-size:14px; text-align:center; margin-top:30px;">Thank you for choosing {brand}.</p>
+            <p style="font-size:13px; margin:25px 0; text-align:center;">Shipping preferences were customized during checkout (via the modal: carrier, speed, instructions).</p>
 
-            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-            <p style="font-size:10px; color:#666; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
+            <p style="font-size:14px; text-align:center; margin:30px 0;">Thank you for choosing {self.brand}.</p>
 
-            <div style="text-align:center; margin-top:20px; font-size:13px;">
-            <a href="https://www.{brand.lower()}.com/contact" style="color:#000; text-decoration:underline; margin:0 10px;">Contact Us</a> |
-            <a href="mailto:support@{brand.lower()}.com" style="color:#000; text-decoration:underline; margin:0 10px;">Email Support</a> |
-            <a href="tel:+1-800-555-0000" style="color:#000; text-decoration:underline; margin:0 10px;">Call +1-800-555-0000</a>
-            </div>
+            <hr style="border:0; border-top:1px solid #eee; margin:25px 0;">
+            <p style="font-size:11px; color:#555; text-align:center;">Questions? Visit {self.brand.lower()}.com/support • This is an automated receipt.</p>
             </div>
             </body>
             </html>
             """
 
             message = Mail(
-                from_email=(SENDER_EMAIL, brand_display.get(brand, brand)),
+                from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
                 to_emails=email,
-                subject=f"Your {brand} Order Confirmation",
+                subject=f"Your {self.brand} Order Confirmation - {order_id}",
                 html_content=html_body
             )
 
             sg = SendGridAPIClient(api_key=SENDGRID_API_KEY)
             response = sg.send(message)
-            print(f"SendGrid success - status: {response.status_code}")
+            print(f"SendGrid sent - status: {response.status_code}")
 
             await interaction.followup.send(
-                embed=Embed(
-                    title="Success!",
-                    description=f"Receipt sent to {email}! Check inbox/spam.",
-                    color=Colour.green()
-                ),
-                ephemeral=True
-            )
-
-            await interaction.message.delete()
-
-        except Exception as e:
-            print(f"SendGrid error: {str(e)}")
-            await interaction.followup.send(
-                embed=Embed(
-                    title="Email Failed",
-                    description=f"Error: {str(e)}\nCheck SendGrid dashboard, key, or spam folder.",
-                    color=Colour.red()
-                ),
+                embed=Embed(title="Sent!", description=f"Hyper-realistic {self.brand} receipt emailed to {email}. Check inbox/spam.", color=Colour.green()),
                 ephemeral=True
             )
 
         except ValueError:
             await interaction.followup.send(
-                embed=Embed(
-                    title="Invalid Input",
-                    description="Price/qty must be numbers. Retry.",
-                    color=Colour.red()
-                ),
+                embed=Embed(title="Invalid Input", description="Price must be a number. Try again.", color=Colour.red()),
                 ephemeral=True
             )
         except Exception as e:
+            print(f"Error: {str(e)}")
             await interaction.followup.send(
-                embed=Embed(
-                    title="Error",
-                    description=f"Something broke: {str(e)}",
-                    color=Colour.red()
-                ),
+                embed=Embed(title="Failed", description=f"Error sending: {str(e)}", color=Colour.red()),
                 ephemeral=True
             )
 
