@@ -44,7 +44,7 @@ brand_display = {
     'Apple': "Apple Store",
 }
 
-# Real brand logos (public PNGs that load in email clients)
+# Brand logos (real public URLs)
 brand_info = {
     'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/512px-Cartier_logo.svg.png"},
     'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
@@ -228,6 +228,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             tracking_number = f"1Z{random.randint(1000000000,9999999999)}"
             payment_method = random.choice(FAKE_PAYMENT_METHODS)
             card_ending = random.randint(1000, 9999)
+            gift_wrapping = random.choice(["Gift wrapping added", "No gift wrapping"])
 
             dm = await interaction.user.create_dm()
             embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
@@ -241,26 +242,25 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             <h2 style="text-align:center; color:#000; margin-bottom:10px; font-size:16px;">Acknowledgment of your order</h2>
             <p style="text-align:center; font-size:14px;">Dear {customer_name},</p>
             <p style="font-size:13px;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
-            <p style="font-size:13px;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
 
             <div style="background:#C41E3A; color:#fff; padding:12px; text-align:center; margin:20px 0; font-size:18px; font-weight:bold;">
             ORDER N° {order_id}
             </div>
 
-            <table style="width:100%; border-collapse:collapse; margin:20px 0;">
-            <tr style="background:#f0f0f0;"><th style="padding:10px; text-align:left; font-size:13px;">Item</th><th style="padding:10px; text-align:right; font-size:13px;">Qty</th><th style="padding:10px; text-align:right; font-size:13px;">Price</th></tr>
-            <tr><td style="padding:10px; font-size:13px;">{self.item.value.strip()}</td><td style="padding:10px; text-align:right; font-size:13px;">{quantity}</td><td style="padding:10px; text-align:right; font-size:13px;">${price:,.2f}</td></tr>
-            </table>
+            <div style="background:#000; color:#fff; padding:15px; margin:20px 0;">
+            <p style="font-size:14px; margin:0;">{self.item.value.strip()}</p>
+            <p style="font-size:13px; margin:5px 0;">{gift_wrapping}</p>
+            <p style="font-size:13px; margin:0; text-align:right;">${price:,.2f} x {quantity}</p>
+            </div>
 
-            <p style="font-size:13px;"><strong>Payment Method:</strong> {payment_method} ending in {card_ending}</p>
+            <p style="font-size:13px; margin:10px 0;"><strong>Subtotal:</strong> ${price*quantity:,.2f}</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>Delivery:</strong> $10.00</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>VAT:</strong> ${price*quantity*0.08:,.2f}</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>Total:</strong> ${(price*quantity*1.08 + 10):,.2f} incl. VAT</p>
 
-            <p style="font-size:13px;"><strong>Subtotal:</strong> ${price*quantity:,.2f}<br>
-            <strong>Delivery:</strong> $10.00<br>
-            <strong>VAT:</strong> ${price*quantity*0.08:,.2f}<br>
-            <strong>Total:</strong> ${(price*quantity*1.08 + 10):,.2f} incl. VAT</p>
-
-            <p style="font-size:13px;"><strong>Estimated Delivery:</strong> {shipping_date}</p>
-            <p style="font-size:13px;"><strong>Tracking Number:</strong> {tracking_number}</p>
+            <p style="font-size:13px; margin:10px 0;"><strong>Estimated delivery date:</strong> {shipping_date}</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>Tracking Number:</strong> {tracking_number}</p>
+            <p style="font-size:13px; margin:5px 0;"><strong>Payment Method:</strong> {payment_method} ending in {card_ending}</p>
 
             <div style="border-top:1px solid #000; padding-top:20px; margin-top:20px;">
             <p style="font-size:14px;">DELIVERY ADDRESS</p>
