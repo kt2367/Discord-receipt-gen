@@ -44,21 +44,21 @@ brand_display = {
     'Apple': "Apple Store",
 }
 
-# Brand logos (real public URLs)
+# Real brand logos (public PNGs that load in email clients)
 brand_info = {
-    'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/1280px-Cartier_logo.svg.png"},
+    'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/512px-Cartier_logo.svg.png"},
     'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
-    'Ksubi': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/1280px-Ksubi_logo.svg.png"},
-    'Balenciaga': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/1280px-Balenciaga_logo.svg.png"},
+    'Ksubi': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/512px-Ksubi_logo.svg.png"},
+    'Balenciaga': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/512px-Balenciaga_logo.svg.png"},
     'Sp5der': {"logo": "https://i.imgur.com/sp5derlogo.png"},
-    'Nike': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/1280px-Logo_NIKE.svg.png"},
-    'Adidas': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/1280px-Adidas_Logo.svg.png"},
-    'Lululemon': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/1280px-Lululemon_logo.svg.png"},
-    'Lanvin': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/1280px-Lanvin_logo.svg.png"},
+    'Nike': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/512px-Logo_NIKE.svg.png"},
+    'Adidas': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/512px-Adidas_Logo.svg.png"},
+    'Lululemon': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/512px-Lululemon_logo.svg.png"},
+    'Lanvin': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/512px-Lanvin_logo.svg.png"},
     'Creed': {"logo": "https://i.imgur.com/creedlogo.png"},
-    'Baccarat': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/1280px-Baccarat_logo.svg.png"},
-    'Sephora': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/1280px-Sephora_Logo.svg.png"},
-    'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/1280px-Apple_logo_black.svg.png"},
+    'Baccarat': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/512px-Baccarat_logo.svg.png"},
+    'Sephora': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/512px-Sephora_Logo.svg.png"},
+    'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/512px-Apple_logo_black.svg.png"},
 }
 
 # Fake data for randomization
@@ -227,7 +227,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             order_id = f"{brand.upper()}-{random.randint(1000000000000000000,9999999999999999999)}"
             tracking_number = f"1Z{random.randint(1000000000,9999999999)}"
             payment_method = random.choice(FAKE_PAYMENT_METHODS)
-            card_ending = random.randint(1000, 9999)  # Randomized 4-digit card ending
+            card_ending = random.randint(1000, 9999)
 
             dm = await interaction.user.create_dm()
             embed = Embed(title="Email Being Sent", description=f"Sending branded {brand} receipt to {email}...", color=Colour.orange())
@@ -235,20 +235,20 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
 
             html_body = f"""
             <html>
-            <body style="font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0; font-size:12px; line-height:1.5;">
-            <div style="max-width:600px; margin:0 auto; padding:20px; border:1px solid #ddd; box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+            <body style="font-family: 'Helvetica Neue', Arial, sans-serif; background:#fff; color:#000; margin:0; padding:0; font-size:11px; line-height:1.5;">
+            <div style="max-width:600px; margin:0 auto; padding:20px; border:1px solid #ddd;">
             <img src="{brand_info.get(brand, {'logo': ''})['logo']}" style="max-width:180px; display:block; margin:0 auto 20px;" alt="{brand}">
-            <h2 style="text-align:center; color:#000; margin-bottom:10px; font-size:18px;">{brand} Order Confirmation</h2>
+            <h2 style="text-align:center; color:#000; margin-bottom:10px; font-size:16px;">Acknowledgment of your order</h2>
             <p style="text-align:center; font-size:14px;">Dear {customer_name},</p>
-            <p style="font-size:13px; text-align:center;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email to ensure that the details are accurate.</p>
-            <p style="font-size:13px; text-align:center;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
+            <p style="font-size:13px;">Thank you for shopping online with {brand}. We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email in order to ensure that the details are accurate.</p>
+            <p style="font-size:13px;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance of your order at the time of shipment.</p>
 
             <div style="background:#C41E3A; color:#fff; padding:12px; text-align:center; margin:20px 0; font-size:18px; font-weight:bold;">
             ORDER N° {order_id}
             </div>
 
-            <table style="width:100%; border-collapse:collapse; margin:20px 0; background:#fff; color:#000;">
-            <tr style="background:#f8f8f8;"><th style="padding:10px; text-align:left; font-size:13px;">Item</th><th style="padding:10px; text-align:right; font-size:13px;">Qty</th><th style="padding:10px; text-align:right; font-size:13px;">Price</th></tr>
+            <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+            <tr style="background:#f0f0f0;"><th style="padding:10px; text-align:left; font-size:13px;">Item</th><th style="padding:10px; text-align:right; font-size:13px;">Qty</th><th style="padding:10px; text-align:right; font-size:13px;">Price</th></tr>
             <tr><td style="padding:10px; font-size:13px;">{self.item.value.strip()}</td><td style="padding:10px; text-align:right; font-size:13px;">{quantity}</td><td style="padding:10px; text-align:right; font-size:13px;">${price:,.2f}</td></tr>
             </table>
 
@@ -270,7 +270,7 @@ class GenerateModal(ui.Modal, title="Receipt Details"):
             <p style="font-size:14px; text-align:center; margin-top:30px;">Thank you for choosing {brand}.</p>
 
             <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
-            <p style="font-size:11px; color:#666; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
+            <p style="font-size:10px; color:#666; text-align:center;">Questions? Contact {brand_display.get(brand, brand)} Support • This is an automated receipt.</p>
 
             <div style="text-align:center; margin-top:20px; font-size:13px;">
             <a href="https://www.{brand.lower()}.com/contact" style="color:#000; text-decoration:underline; margin:0 10px;">Contact Us</a> |
