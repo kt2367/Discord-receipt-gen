@@ -1,5 +1,5 @@
 import discord
-from discord import app_commands, ui, Embed, Colour, ButtonStyle
+from discord import app_commands, ui, Embed, Colour
 from discord.ui import TextInput
 import datetime
 import random
@@ -22,8 +22,9 @@ if not all([BOT_TOKEN, SENDER_EMAIL, SENDGRID_API_KEY]):
     logger.error("Missing env vars!")
     exit(1)
 
-ROLE_ID = 1472751333286350981  # Your role ID
+ROLE_ID = 1472751333286350981
 
+# ==================== BRAND DATA ====================
 BRANDS = [
     'Cartier', 'Denim Tears', 'Ksubi', 'Balenciaga', 'Sp5der',
     'Nike', 'Adidas', 'Lululemon', 'Lanvin', 'Creed',
@@ -38,30 +39,83 @@ brand_display = {
     'Sp5der': "Sp5der",
     'Nike': "Nike",
     'Adidas': "adidas",
-    'Lululemon': "lululemon athletica",
+    'Lululemon': "lululemon",
     'Lanvin': "Lanvin",
     'Creed': "Creed",
     'Baccarat': "Baccarat",
     'Sephora': "Sephora",
-    'Apple': "Apple Store",
+    'Apple': "Apple",
 }
 
-brand_info = {
-    'Cartier': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Cartier_logo.svg/512px-Cartier_logo.svg.png"},
-    'Denim Tears': {"logo": "https://i.imgur.com/denimtearslogo.png"},
-    'Ksubi': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Ksubi_logo.svg/512px-Ksubi_logo.svg.png"},
-    'Balenciaga': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8f/Balenciaga_logo.svg/512px-Balenciaga_logo.svg.png"},
-    'Sp5der': {"logo": "https://i.imgur.com/sp5derlogo.png"},
-    'Nike': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Logo_NIKE.svg/512px-Logo_NIKE.svg.png"},
-    'Adidas': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Adidas_Logo.svg/512px-Adidas_Logo.svg.png"},
-    'Lululemon': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Lululemon_logo.svg/512px-Lululemon_logo.svg.png"},
-    'Lanvin': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Lanvin_logo.svg/512px-Lanvin_logo.svg.png"},
-    'Creed': {"logo": "https://i.imgur.com/creedlogo.png"},
-    'Baccarat': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Baccarat_logo.svg/512px-Baccarat_logo.svg.png"},
-    'Sephora': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Sephora_Logo.svg/512px-Sephora_Logo.svg.png"},
-    'Apple': {"logo": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/512px-Apple_logo_black.svg.png"},
+# Brand websites for footer links
+brand_websites = {
+    'Cartier': "www.cartier.com",
+    'Denim Tears': "www.denimtears.com",
+    'Ksubi': "www.ksubi.com",
+    'Balenciaga': "www.balenciaga.com",
+    'Sp5der': "www.sp5der.com",
+    'Nike': "www.nike.com",
+    'Adidas': "www.adidas.com",
+    'Lululemon': "shop.lululemon.com",
+    'Lanvin': "www.lanvin.com",
+    'Creed': "www.creedboutique.com",
+    'Baccarat': "www.baccarat.com",
+    'Sephora': "www.sephora.com",
+    'Apple': "www.apple.com",
 }
 
+# Brand customer service emails
+brand_support = {
+    'Cartier': "contact@cartier.com",
+    'Denim Tears': "support@denimtears.com",
+    'Ksubi': "help@ksubi.com",
+    'Balenciaga': "customer.service@balenciaga.com",
+    'Sp5der': "support@sp5der.com",
+    'Nike': "service@nike.com",
+    'Adidas': "customer.service@adidas.com",
+    'Lululemon': "gea@lululemon.com",
+    'Lanvin': "customer.service@lanvin.com",
+    'Creed': "info@creedboutique.com",
+    'Baccarat': "contact@baccarat.com",
+    'Sephora': "customerservice@sephora.com",
+    'Apple': "orderstatus@apple.com",
+}
+
+# Brand colors for headers
+brand_colors = {
+    'Cartier': '#8B0000',
+    'Denim Tears': '#1A2E3F',
+    'Ksubi': '#2C2C2C',
+    'Balenciaga': '#000000',
+    'Sp5der': '#D4AF37',
+    'Nike': '#000000',
+    'Adidas': '#000000',
+    'Lululemon': '#4B6E5E',
+    'Lanvin': '#0A1A2A',
+    'Creed': '#1E2F4A',
+    'Baccarat': '#8B6B4D',
+    'Sephora': '#000000',
+    'Apple': '#1D1D1F',
+}
+
+# Brand secondary colors
+brand_secondary = {
+    'Cartier': '#D4AF37',
+    'Denim Tears': '#C4A962',
+    'Ksubi': '#8B8B8B',
+    'Balenciaga': '#FFFFFF',
+    'Sp5der': '#1A1A1A',
+    'Nike': '#FFFFFF',
+    'Adidas': '#00FF00',
+    'Lululemon': '#F0E9E0',
+    'Lanvin': '#B89C7A',
+    'Creed': '#C5B4A3',
+    'Baccarat': '#E5D3C1',
+    'Sephora': '#FFFFFF',
+    'Apple': '#86868B',
+}
+
+# ==================== FAKE DATA ====================
 FAKE_NAMES = [
     "George Love", "Alex Rivera", "Jordan Lee", "Taylor Brooks", "Morgan Ellis",
     "Casey Quinn", "Riley Harper", "Jamie Knox", "Parker Reese", "Cameron Blake"
@@ -83,8 +137,9 @@ FAKE_ADDRESSES = [
 FAKE_PAYMENT_METHODS = [
     "Visa ending in 4823",
     "Mastercard ending in 7192",
+    "American Express ending in 1004",
     "Apple Pay",
-    "Cash on Delivery",
+    "PayPal",
     "Visa ending in 5634",
     "Mastercard ending in 2941"
 ]
@@ -119,10 +174,8 @@ def get_state_from_address(address):
             return state
     return "GA"
 
-# Store user emails (in memory - resets on restart)
+# Store user emails
 user_emails = {}
-
-# Store role removal tasks
 role_tasks = {}
 
 intents = discord.Intents.default()
@@ -134,7 +187,6 @@ tree = app_commands.CommandTree(client)
 async def on_ready():
     await tree.sync()
     logger.info(f"Bot online as {client.user}")
-    logger.info(f"discord.py version: {discord.__version__}")
 
 # ==================== SETUP COMMAND ====================
 @tree.command(name="setup", description="Hook your email to your user (role required)")
@@ -161,16 +213,12 @@ async def role(interaction: discord.Interaction, user: discord.Member, duration:
 
     duration = duration.lower().strip()
     
-    # Parse duration
     if duration.endswith('d'):
         seconds = int(duration[:-1]) * 86400
-        delta = datetime.timedelta(days=int(duration[:-1]))
     elif duration.endswith('w'):
         seconds = int(duration[:-1]) * 604800
-        delta = datetime.timedelta(weeks=int(duration[:-1]))
     elif duration.endswith('m'):
-        seconds = int(duration[:-1]) * 2592000  # 30 days
-        delta = datetime.timedelta(days=int(duration[:-1]) * 30)
+        seconds = int(duration[:-1]) * 2592000
     else:
         await interaction.response.send_message("Invalid format. Use 1d, 2w, 3m", ephemeral=True)
         return
@@ -180,24 +228,19 @@ async def role(interaction: discord.Interaction, user: discord.Member, duration:
         await interaction.response.send_message("Role not found.", ephemeral=True)
         return
 
-    # Add role
     await user.add_roles(role)
     await interaction.response.send_message(f"Added role to {user.mention} for {duration}.", ephemeral=True)
     
-    # Cancel existing task if any
     if user.id in role_tasks:
         role_tasks[user.id].cancel()
     
-    # Schedule role removal
     async def remove_role_after_delay():
         try:
             await asyncio.sleep(seconds)
             await user.remove_roles(role)
             logger.info(f"Removed role from {user} after {duration}")
         except asyncio.CancelledError:
-            logger.info(f"Role removal cancelled for {user}")
-        except Exception as e:
-            logger.error(f"Error removing role: {e}")
+            pass
     
     task = asyncio.create_task(remove_role_after_delay())
     role_tasks[user.id] = task
@@ -210,7 +253,7 @@ class BrandSelect(discord.ui.Select):
         for brand in BRANDS:
             options.append(discord.SelectOption(label=brand, value=brand))
         
-        super().__init__(placeholder="Choose a brand...", min_values=1, max_values=1, options=options, custom_id=f"brand_select_{user_id}")
+        super().__init__(placeholder="Choose a brand...", min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         if interaction.user.id != self.user_id:
@@ -218,14 +261,11 @@ class BrandSelect(discord.ui.Select):
             return
         
         brand = self.values[0]
-        logger.info(f"User {interaction.user} selected {brand}")
         
-        # Check if user has email set
         if interaction.user.id not in user_emails:
             await interaction.response.send_message(embed=Embed(title="No Email", description="Run /setup first to save your email!", color=Colour.red()), ephemeral=True)
             return
         
-        # Choose modal based on brand
         if brand == "Cartier":
             modal = CartierModal(brand, interaction.user.id)
         else:
@@ -246,14 +286,14 @@ async def generate(interaction: discord.Interaction):
 
     embed = Embed(
         title="Choose Your Brand",
-        description=f"{interaction.user.mention}, select a brand from the dropdown below.\n(Only you can use this menu)",
+        description=f"{interaction.user.mention}, select a brand from the dropdown below.",
         color=Colour.blue()
     )
 
     view = BrandView(interaction.user.id)
     await interaction.response.send_message(embed=embed, view=view)
 
-# ==================== CARTIER MODAL (with size & color) ====================
+# ==================== CARTIER MODAL ====================
 class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -262,8 +302,8 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
 
         self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Love Bracelet")
         self.price = TextInput(label="Price per unit in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 6500")
-        self.color = TextInput(label="Color", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. Rose Gold, Yellow Gold")
-        self.size = TextInput(label="Size", style=discord.TextStyle.short, required=True, max_length=10, placeholder="e.g. 52, 54, 56")
+        self.color = TextInput(label="Color", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. Rose Gold")
+        self.size = TextInput(label="Size", style=discord.TextStyle.short, required=True, max_length=10, placeholder="e.g. 52")
         self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. March 15, 2025")
 
         self.add_item(self.item)
@@ -280,22 +320,17 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
             await interaction.followup.send(embed=Embed(title="Error", description="Email not found. Run /setup again.", color=Colour.red()), ephemeral=True)
             return
         
-        await self.send_receipt(interaction, email, 
-                               self.item.value, self.price.value, 
-                               self.color.value, self.size.value, 
-                               self.shipping_date.value)
-    
-    async def send_receipt(self, interaction, email, item_name, price_str, color, size, est_date):
         try:
-            price = float(price_str.strip())
-            
-            # Generate receipt
-            await self.generate_and_send(interaction, email, item_name, price, color, size, est_date)
+            price = float(self.price.value.strip())
+            await self.send_cartier_receipt(interaction, email, 
+                                           self.item.value, price, 
+                                           self.color.value, self.size.value, 
+                                           self.shipping_date.value)
         except Exception as e:
             logger.error(f"Error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
     
-    async def generate_and_send(self, interaction, email, item_name, price, color, size, est_date):
+    async def send_cartier_receipt(self, interaction, email, item_name, price, color, size, est_date):
         qty = 1
         customer_name = random.choice(FAKE_NAMES)
         address = random.choice(FAKE_ADDRESSES)
@@ -303,100 +338,121 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
         tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
         subtotal = price * qty
-        base_shipping = random.uniform(8, 18)
-        mult = STATE_SHIPPING_MULTIPLIER.get(state, 1.5)
-        surcharge = random.uniform(0, 8) * (mult - 1)
-        variance = random.uniform(-3, 3)
-        delivery = round(max(5.00, base_shipping + surcharge + variance), 2)
-
+        base_shipping = random.uniform(25, 45)
+        delivery = round(base_shipping, 2)
         sales_tax = round(subtotal * tax_rate, 2)
         total = round(subtotal + delivery + sales_tax, 2)
 
-        order_id = f"{self.brand.upper()}-{random.randint(1000000000000000,9999999999999999)}"
+        order_id = f"CRT-{random.randint(1000000, 9999999)}"
         payment = random.choice(FAKE_PAYMENT_METHODS)
 
         html_body = f"""
+        <!DOCTYPE html>
         <html>
-        <body style="font-family: Georgia, 'Times New Roman', serif; background:#f8f8f8; color:#111; margin:0; padding:0; font-size:11px; line-height:1.4;">
-        <div style="max-width:580px; margin:20px auto; background:#fff; border:1px solid #ccc;">
-            <div style="background: linear-gradient(to right, #8B0000, #000000); padding:40px 20px; text-align:center;">
-                <h1 style="color:#fff; margin:0; font-size:42px; font-weight:400; letter-spacing:4px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style:italic;">{self.brand}</h1>
-            </div>
-
-            <div style="padding:25px 30px;">
-                <h2 style="text-align:center; font-size:16px; margin:0 0 15px;">Acknowledgment of your order</h2>
-                <p style="text-align:center; margin:0 0 20px;">Dear {customer_name},</p>
-                <p style="margin:0 0 15px;">Thank you for shopping online with {self.brand}.</p>
-                <p style="margin:0 0 15px;">We are pleased to acknowledge receipt of your order, the main details of which are set out below.</p>
-
-                <div style="background:#000; color:#fff; padding:12px; text-align:center; margin:20px 0;">
-                    ORDER N° {order_id}
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: 'Georgia', 'Times New Roman', serif; background-color: #f5f5f5; margin: 0; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0d6c6; }}
+                .header {{ background: linear-gradient(135deg, #8B0000 0%, #4a0000 100%); padding: 40px 20px; text-align: center; }}
+                .header h1 {{ color: #ffffff; margin: 0; font-size: 48px; font-weight: 300; letter-spacing: 8px; font-family: 'Times New Roman', serif; }}
+                .content {{ padding: 40px; }}
+                .order-number {{ background-color: #f8f5f0; padding: 15px; text-align: center; border: 1px solid #d4b68a; margin: 20px 0; }}
+                .order-number p {{ margin: 0; color: #8B0000; font-size: 18px; }}
+                .details {{ margin: 30px 0; }}
+                .details table {{ width: 100%; border-collapse: collapse; }}
+                .details td {{ padding: 12px 0; border-bottom: 1px solid #e0d6c6; }}
+                .total {{ font-weight: bold; font-size: 18px; color: #8B0000; }}
+                .footer {{ border-top: 2px solid #d4b68a; padding: 30px 0 0; text-align: center; color: #666; font-size: 12px; }}
+                a {{ color: #8B0000; text-decoration: none; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>CARTIER</h1>
                 </div>
-
-                <div style="background:#111; color:#eee; padding:15px; margin:15px 0;">
-                    <p style="margin:0 0 5px;"><strong>{item_name}</strong></p>
-                    <p style="margin:0 0 5px;">Color: {color}</p>
-                    <p style="margin:0 0 5px;">Size: {size}</p>
-                    <p style="margin:0 0 5px;">Shipping Cost: ${delivery:,.2f}</p>
-                    <p style="text-align:right; margin:5px 0 0;">${price:,.2f} x {qty}</p>
-                </div>
-
-                <table style="width:100%; font-size:11px; border-collapse:collapse;">
-                    <tr><td style="padding:4px 0;">Estimated delivery date:</td><td style="text-align:right;">{est_date}</td></tr>
-                    <tr><td style="padding:4px 0;">Payment Method:</td><td style="text-align:right;">{payment}</td></tr>
-                    <tr><td colspan="2" style="padding:10px 0 0; border-top:1px solid #aaa;"></td></tr>
-                    <tr><td style="padding:4px 0;"><strong>SUBTOTAL</strong></td><td style="text-align:right;">${subtotal:,.2f}</td></tr>
-                    <tr><td style="padding:4px 0;"><strong>DELIVERY</strong></td><td style="text-align:right;">${delivery:,.2f}</td></tr>
-                    <tr><td style="padding:4px 0;"><strong>Sales Tax</strong> ({tax_rate*100:.1f}%)</td><td style="text-align:right;">${sales_tax:,.2f}</td></tr>
-                    <tr style="font-weight:bold; font-size:12px;"><td style="padding:8px 0 0;">TOTAL</td><td style="text-align:right; padding:8px 0 0;">${total:,.2f}</td></tr>
-                </table>
-
-                <div style="margin:30px 0 0; padding:0; border:1px solid #000;">
-                    <table style="width:100%; font-size:11px; color:#fff; background:#000;">
-                        <tr style="background:#800000;">
-                            <th style="padding:8px;">DELIVERY ADDRESS</th>
-                            <th style="padding:8px;">BILLING ADDRESS</th>
-                        </tr>
-                        <tr style="color:#000; background:#fff;">
-                            <td style="padding:8px;">{customer_name}<br>{address}</td>
-                            <td style="padding:8px;">{customer_name}<br>{address}</td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div style="font-size:10px; color:#444; text-align:center; margin:15px 0;">
-                    {self.brand} Customer Service<br>
-                    Email: CustomerService@{self.brand.lower()}.com
+                <div class="content">
+                    <p style="font-size: 24px; color: #333; margin: 0 0 10px;">Dear {customer_name},</p>
+                    <p style="color: #666; line-height: 1.6;">Thank you for your purchase. We are pleased to confirm your order.</p>
+                    
+                    <div class="order-number">
+                        <p>ORDER #{order_id}</p>
+                    </div>
+                    
+                    <div class="details">
+                        <table>
+                            <tr>
+                                <td><strong>Item:</strong> {item_name}</td>
+                                <td style="text-align: right;">${price:,.2f}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Color:</strong> {color}</td>
+                                <td style="text-align: right;"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Size:</strong> {size}</td>
+                                <td style="text-align: right;"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Quantity:</strong> {qty}</td>
+                                <td style="text-align: right;"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Shipping:</strong></td>
+                                <td style="text-align: right;">${delivery:,.2f}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tax:</strong></td>
+                                <td style="text-align: right;">${sales_tax:,.2f}</td>
+                            </tr>
+                            <tr class="total">
+                                <td><strong>TOTAL:</strong></td>
+                                <td style="text-align: right;">${total:,.2f}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div style="margin: 30px 0; padding: 20px; background-color: #faf8f5;">
+                        <p><strong>Delivery Address:</strong><br>{address}</p>
+                        <p><strong>Estimated Delivery:</strong><br>{est_date}</p>
+                        <p><strong>Payment Method:</strong><br>{payment}</p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>Track your order: <a href="#">cartier.com/track/{order_id}</a></p>
+                        <p style="margin: 10px 0;">Customer Service: +33 1 42 18 33 33 | {brand_support['Cartier']}</p>
+                        <p>{brand_websites['Cartier']}</p>
+                        <p style="margin-top: 20px;">© Cartier 2025. All rights reserved.</p>
+                    </div>
                 </div>
             </div>
         </body>
         </html>
         """
 
-        # Send via SendGrid
         message = Mail(
-            from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
+            from_email=(SENDER_EMAIL, "Cartier"),
             to_emails=email,
-            subject=f"Your {self.brand} Order Confirmation",
+            subject=f"Order Confirmation #{order_id}",
             html_content=html_body
         )
 
         sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        logger.info(f"Email sent to {email} - status {response.status_code}")
+        sg.send(message)
+        await interaction.followup.send(embed=Embed(title="Success!", description=f"Cartier receipt sent to {email}!", color=Colour.green()), ephemeral=True)
 
-        await interaction.followup.send(embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()), ephemeral=True)
-
-# ==================== BASIC MODAL (no size/color for other brands) ====================
+# ==================== BASIC MODAL ====================
 class BasicModal(discord.ui.Modal, title="Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
         self.brand = brand
         self.user_id = user_id
 
-        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Hoodie, Shoes, Perfume")
-        self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 250")
-        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. March 15, 2025")
+        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100)
+        self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20)
+        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
 
         self.add_item(self.item)
         self.add_item(self.price)
@@ -413,7 +469,7 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
         try:
             price = float(self.price.value.strip())
             
-            # Generate receipt (no color/size)
+            # Generate data
             qty = 1
             customer_name = random.choice(FAKE_NAMES)
             address = random.choice(FAKE_ADDRESSES)
@@ -421,50 +477,205 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
             tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
             subtotal = price * qty
-            base_shipping = random.uniform(8, 18)
-            mult = STATE_SHIPPING_MULTIPLIER.get(state, 1.5)
-            surcharge = random.uniform(0, 8) * (mult - 1)
-            variance = random.uniform(-3, 3)
-            delivery = round(max(5.00, base_shipping + surcharge + variance), 2)
-
+            delivery = round(random.uniform(8, 18), 2)
             sales_tax = round(subtotal * tax_rate, 2)
             total = round(subtotal + delivery + sales_tax, 2)
 
-            order_id = f"{self.brand.upper()}-{random.randint(1000000000000000,9999999999999999)}"
+            order_id = f"{self.brand.upper()[:3]}-{random.randint(100000, 999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
 
-            html_body = f"""
-            <html>
-            <body style="font-family: Arial, sans-serif;">
-                <h2>Your {self.brand} Order</h2>
-                <p>Order #{order_id}</p>
-                <p>Item: {self.item.value}</p>
-                <p>Price: ${price:,.2f}</p>
-                <p>Shipping: ${delivery:,.2f}</p>
-                <p>Tax: ${sales_tax:,.2f}</p>
-                <p><strong>Total: ${total:,.2f}</strong></p>
-                <p>Delivery by: {self.shipping_date.value}</p>
-                <p>Shipping to: {address}</p>
-            </body>
-            </html>
-            """
+            # Brand-specific HTML templates
+            html_body = self.get_brand_html(
+                self.brand, customer_name, order_id, 
+                self.item.value, price, qty, delivery, sales_tax, total,
+                address, self.shipping_date.value, payment
+            )
 
             message = Mail(
                 from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
                 to_emails=email,
-                subject=f"Your {self.brand} Order",
+                subject=f"Your {self.brand} Order #{order_id}",
                 html_content=html_body
             )
 
             sg = SendGridAPIClient(SENDGRID_API_KEY)
-            response = sg.send(message)
-            logger.info(f"Email sent to {email} - status {response.status_code}")
-
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()), ephemeral=True)
+            sg.send(message)
+            
+            await interaction.followup.send(embed=Embed(title="Success!", description=f"{self.brand} receipt sent to {email}!", color=Colour.green()), ephemeral=True)
 
         except Exception as e:
             logger.error(f"Error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
-# Run the bot
-client.run(BOT_TOKEN)
+    def get_brand_html(self, brand, customer_name, order_id, item_name, price, qty, delivery, tax, total, address, est_date, payment):
+        
+        # Get brand colors
+        primary = brand_colors.get(brand, '#000000')
+        secondary = brand_secondary.get(brand, '#FFFFFF')
+        website = brand_websites.get(brand, 'www.example.com')
+        support = brand_support.get(brand, 'support@example.com')
+        
+        # NIKE
+        if brand == "Nike":
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head><style>
+                body {{ font-family: 'Helvetica', 'Arial', sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; }}
+                .header {{ background: {primary}; padding: 30px; text-align: center; }}
+                .header h1 {{ color: {secondary}; margin: 0; font-size: 42px; font-weight: 800; letter-spacing: 2px; }}
+                .content {{ padding: 30px; }}
+                .order-box {{ background: #f8f8f8; padding: 20px; margin: 20px 0; border-left: 4px solid {primary}; }}
+                .price {{ font-size: 24px; font-weight: bold; color: {primary}; }}
+                .footer {{ background: {primary}; color: {secondary}; padding: 20px; text-align: center; }}
+                a {{ color: {secondary}; }}
+                .track-link {{ background: {primary}; color: {secondary}; padding: 12px 24px; text-decoration: none; display: inline-block; margin: 20px 0; }}
+            </style></head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1>NIKE</h1></div>
+                    <div class="content">
+                        <h2>THANKS FOR YOUR ORDER, {customer_name.upper()}!</h2>
+                        <p>YOUR GEAR IS ON THE WAY.</p>
+                        <div class="order-box">
+                            <p><strong>ORDER #{order_id}</strong></p>
+                            <p>{item_name} x{qty} - ${price:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${tax:,.2f}</p>
+                            <p class="price">TOTAL: ${total:,.2f}</p>
+                        </div>
+                        <p><strong>DELIVERY TO:</strong> {address}</p>
+                        <p><strong>EST. DELIVERY:</strong> {est_date}</p>
+                        <p><strong>PAYMENT:</strong> {payment}</p>
+                        <a href="#" class="track-link">TRACK ORDER</a>
+                    </div>
+                    <div class="footer">
+                        <p>JUST DO IT. | nike.com/orders</p>
+                        <p style="font-size: 12px;">{support} | {website}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
+        # ADIDAS
+        elif brand == "Adidas":
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head><style>
+                body {{ font-family: 'Arial', sans-serif; background: #fff; margin: 0; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: #fff; border: 1px solid #e5e5e5; }}
+                .header {{ background: {primary}; padding: 25px; text-align: center; border-bottom: 3px solid {secondary}; }}
+                .header h1 {{ color: {secondary}; margin: 0; font-size: 36px; font-weight: 600; }}
+                .content {{ padding: 30px; }}
+                .stripes {{ height: 3px; background: linear-gradient(90deg, {primary} 33%, {secondary} 33%, {secondary} 66%, {primary} 66%); }}
+                .order-detail {{ border: 1px solid #ddd; padding: 20px; margin: 20px 0; }}
+                .footer {{ text-align: center; padding: 20px; color: #666; border-top: 1px solid #e5e5e5; }}
+                .total {{ font-size: 20px; font-weight: bold; color: {primary}; }}
+            </style></head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1>adidas</h1></div>
+                    <div class="stripes"></div>
+                    <div class="content">
+                        <p style="font-size: 18px;">Hey {customer_name},</p>
+                        <p>Your order is confirmed and being prepared.</p>
+                        <div class="order-detail">
+                            <p style="font-size: 14px; color: #666;">ORDER #{order_id}</p>
+                            <p><strong>{item_name}</strong> | ${price:,.2f}</p>
+                            <p>Subtotal: ${price * qty:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${tax:,.2f}</p>
+                            <p class="total">TOTAL: ${total:,.2f}</p>
+                        </div>
+                        <p><strong>Shipping to:</strong> {address}</p>
+                        <p><strong>Delivery by:</strong> {est_date}</p>
+                        <p><strong>Payment:</strong> {payment}</p>
+                    </div>
+                    <div class="footer">
+                        <p>{website} | IMPOSSIBLE IS NOTHING</p>
+                        <p style="font-size: 12px;">Need help? {support}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
+        # APPLE
+        elif brand == "Apple":
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head><style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f7; margin: 0; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 18px; overflow: hidden; }}
+                .header {{ padding: 40px 30px 20px; text-align: center; }}
+                .header h1 {{ color: {primary}; font-size: 32px; font-weight: 500; }}
+                .content {{ padding: 0 30px 30px; }}
+                .order-item {{ border-bottom: 1px solid #d2d2d7; padding: 20px 0; }}
+                .total {{ font-size: 24px; font-weight: 400; margin: 20px 0; color: {primary}; }}
+                .footer {{ background: #f5f5f7; padding: 20px; text-align: center; color: {secondary}; }}
+                .track-link {{ color: {primary}; text-decoration: none; }}
+            </style></head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Apple</h1>
+                    </div>
+                    <div class="content">
+                        <p style="font-size: 20px;">{customer_name}, thank you for your order.</p>
+                        <p style="color: {secondary};">Order #{order_id}</p>
+                        
+                        <div class="order-item">
+                            <p style="font-size: 18px;">{item_name}</p>
+                            <p style="color: {secondary};">Qty: {qty}</p>
+                            <p style="text-align: right;">${price:,.2f}</p>
+                        </div>
+                        
+                        <p>Shipping: ${delivery:,.2f}</p>
+                        <p>Tax: ${tax:,.2f}</p>
+                        <p class="total">Total: ${total:,.2f}</p>
+                        
+                        <p><strong>Delivers to:</strong><br>{address}</p>
+                        <p><strong>Estimated delivery:</strong> {est_date}</p>
+                        <p><strong>Payment:</strong> {payment}</p>
+                        
+                        <p style="text-align: center;">
+                            <a href="#" class="track-link">Track your order →</a>
+                        </p>
+                    </div>
+                    <div class="footer">
+                        <p>{website}/orderstatus</p>
+                        <p style="font-size: 12px;">{support}</p>
+                        <p style="font-size: 10px;">© 2025 Apple Inc. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
+        # SEPHORA
+        elif brand == "Sephora":
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head><style>
+                body {{ font-family: 'Arial', sans-serif; background: #fff; margin: 0; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: #fff; }}
+                .header {{ background: {primary}; padding: 30px; text-align: center; }}
+                .header h1 {{ color: {secondary}; margin: 0; font-size: 36px; letter-spacing: 2px; }}
+                .stripes {{ background: repeating-linear-gradient(45deg, {primary}, {primary} 10px, {secondary} 10px, {secondary} 20px); height: 10px; }}
+                .content {{ padding: 30px; }}
+                .beauty-tip {{ background: #f8f8f8; padding: 15px; margin: 20px 0; border-left: 4px solid {primary}; }}
+                .footer {{ text-align: center; padding: 20px; background: #f8f8f8; }}
+                .price {{ font-weight: bold; color: {primary}; }}
+            </style></head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1>SEPHORA</h1></div>
+                    <div class="stripes"></div>
+                    <div class="content">
+                        <h2 style="color: {primary};">Hi {customer_name},</h2>
+                        <p>Your beauty order is confirmed! Get ready to glow
