@@ -9,6 +9,7 @@ import re
 import logging
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+import threading
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('discord')
@@ -81,7 +82,7 @@ brand_support = {
     'Apple': "orderstatus@apple.com",
 }
 
-# Brand colors for headers
+# Brand colors
 brand_colors = {
     'Cartier': '#8B0000',
     'Denim Tears': '#1A2E3F',
@@ -98,7 +99,6 @@ brand_colors = {
     'Apple': '#1D1D1F',
 }
 
-# Brand secondary colors
 brand_secondary = {
     'Cartier': '#D4AF37',
     'Denim Tears': '#C4A962',
@@ -187,6 +187,8 @@ tree = app_commands.CommandTree(client)
 async def on_ready():
     await tree.sync()
     logger.info(f"Bot online as {client.user}")
+    # Set bot activity
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="/generate"))
 
 # ==================== SETUP COMMAND ====================
 @tree.command(name="setup", description="Hook your email to your user (role required)")
@@ -229,7 +231,7 @@ async def role(interaction: discord.Interaction, user: discord.Member, duration:
         return
 
     await user.add_roles(role)
-    await interaction.response.send_message(f"Added role to {user.mention} for {duration}.", ephemeral=True)
+    await interaction.response.send_message(f"✅ Added role to {user.mention} for {duration}.", ephemeral=True)
     
     if user.id in role_tasks:
         role_tasks[user.id].cancel()
@@ -313,6 +315,7 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY acknowledge to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -322,126 +325,142 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await self.send_cartier_receipt(interaction, email, 
-                                           self.item.value, price, 
-                                           self.color.value, self.size.value, 
-                                           self.shipping_date.value)
+            
+            # Send success message IMMEDIATELY
+            await interaction.followup.send(embed=Embed(title="Processing...", description="⏳ Your receipt is being generated and emailed. This may take a few seconds.", color=Colour.blue()), ephemeral=True)
+            
+            # Send email in background task
+            asyncio.create_task(self.send_cartier_receipt(
+                interaction, email, 
+                self.item.value, price, 
+                self.color.value, self.size.value, 
+                self.shipping_date.value
+            ))
+            
         except Exception as e:
             logger.error(f"Error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
     
     async def send_cartier_receipt(self, interaction, email, item_name, price, color, size, est_date):
-        qty = 1
-        customer_name = random.choice(FAKE_NAMES)
-        address = random.choice(FAKE_ADDRESSES)
-        state = get_state_from_address(address)
-        tax_rate = STATE_TAX_RATES.get(state, 0.0749)
+        try:
+            qty = 1
+            customer_name = random.choice(FAKE_NAMES)
+            address = random.choice(FAKE_ADDRESSES)
+            state = get_state_from_address(address)
+            tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
-        subtotal = price * qty
-        base_shipping = random.uniform(25, 45)
-        delivery = round(base_shipping, 2)
-        sales_tax = round(subtotal * tax_rate, 2)
-        total = round(subtotal + delivery + sales_tax, 2)
+            subtotal = price * qty
+            base_shipping = random.uniform(25, 45)
+            delivery = round(base_shipping, 2)
+            sales_tax = round(subtotal * tax_rate, 2)
+            total = round(subtotal + delivery + sales_tax, 2)
 
-        order_id = f"CRT-{random.randint(1000000, 9999999)}"
-        payment = random.choice(FAKE_PAYMENT_METHODS)
+            order_id = f"CRT-{random.randint(1000000, 9999999)}"
+            payment = random.choice(FAKE_PAYMENT_METHODS)
 
-        html_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{ font-family: 'Georgia', 'Times New Roman', serif; background-color: #f5f5f5; margin: 0; padding: 20px; }}
-                .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0d6c6; }}
-                .header {{ background: linear-gradient(135deg, #8B0000 0%, #4a0000 100%); padding: 40px 20px; text-align: center; }}
-                .header h1 {{ color: #ffffff; margin: 0; font-size: 48px; font-weight: 300; letter-spacing: 8px; font-family: 'Times New Roman', serif; }}
-                .content {{ padding: 40px; }}
-                .order-number {{ background-color: #f8f5f0; padding: 15px; text-align: center; border: 1px solid #d4b68a; margin: 20px 0; }}
-                .order-number p {{ margin: 0; color: #8B0000; font-size: 18px; }}
-                .details {{ margin: 30px 0; }}
-                .details table {{ width: 100%; border-collapse: collapse; }}
-                .details td {{ padding: 12px 0; border-bottom: 1px solid #e0d6c6; }}
-                .total {{ font-weight: bold; font-size: 18px; color: #8B0000; }}
-                .footer {{ border-top: 2px solid #d4b68a; padding: 30px 0 0; text-align: center; color: #666; font-size: 12px; }}
-                a {{ color: #8B0000; text-decoration: none; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>CARTIER</h1>
+            html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body {{ font-family: 'Georgia', 'Times New Roman', serif; background-color: #f5f5f5; margin: 0; padding: 20px; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e0d6c6; }}
+                    .header {{ background: linear-gradient(135deg, #8B0000 0%, #4a0000 100%); padding: 40px 20px; text-align: center; }}
+                    .header h1 {{ color: #ffffff; margin: 0; font-size: 48px; font-weight: 300; letter-spacing: 8px; font-family: 'Times New Roman', serif; }}
+                    .content {{ padding: 40px; }}
+                    .order-number {{ background-color: #f8f5f0; padding: 15px; text-align: center; border: 1px solid #d4b68a; margin: 20px 0; }}
+                    .order-number p {{ margin: 0; color: #8B0000; font-size: 18px; }}
+                    .details {{ margin: 30px 0; }}
+                    .details table {{ width: 100%; border-collapse: collapse; }}
+                    .details td {{ padding: 12px 0; border-bottom: 1px solid #e0d6c6; }}
+                    .total {{ font-weight: bold; font-size: 18px; color: #8B0000; }}
+                    .footer {{ border-top: 2px solid #d4b68a; padding: 30px 0 0; text-align: center; color: #666; font-size: 12px; }}
+                    a {{ color: #8B0000; text-decoration: none; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>CARTIER</h1>
+                    </div>
+                    <div class="content">
+                        <p style="font-size: 24px; color: #333; margin: 0 0 10px;">Dear {customer_name},</p>
+                        <p style="color: #666; line-height: 1.6;">Thank you for your purchase. We are pleased to confirm your order.</p>
+                        
+                        <div class="order-number">
+                            <p>ORDER #{order_id}</p>
+                        </div>
+                        
+                        <div class="details">
+                            <table>
+                                <tr>
+                                    <td><strong>Item:</strong> {item_name}</td>
+                                    <td style="text-align: right;">${price:,.2f}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Color:</strong> {color}</td>
+                                    <td style="text-align: right;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Size:</strong> {size}</td>
+                                    <td style="text-align: right;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Quantity:</strong> {qty}</td>
+                                    <td style="text-align: right;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Shipping:</strong></td>
+                                    <td style="text-align: right;">${delivery:,.2f}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tax:</strong></td>
+                                    <td style="text-align: right;">${sales_tax:,.2f}</td>
+                                </tr>
+                                <tr class="total">
+                                    <td><strong>TOTAL:</strong></td>
+                                    <td style="text-align: right;">${total:,.2f}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div style="margin: 30px 0; padding: 20px; background-color: #faf8f5;">
+                            <p><strong>Delivery Address:</strong><br>{address}</p>
+                            <p><strong>Estimated Delivery:</strong><br>{est_date}</p>
+                            <p><strong>Payment Method:</strong><br>{payment}</p>
+                        </div>
+                        
+                        <div class="footer">
+                            <p>Track your order: <a href="#">cartier.com/track/{order_id}</a></p>
+                            <p style="margin: 10px 0;">Customer Service: +33 1 42 18 33 33 | {brand_support['Cartier']}</p>
+                            <p>{brand_websites['Cartier']}</p>
+                            <p style="margin-top: 20px;">© Cartier 2025. All rights reserved.</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="content">
-                    <p style="font-size: 24px; color: #333; margin: 0 0 10px;">Dear {customer_name},</p>
-                    <p style="color: #666; line-height: 1.6;">Thank you for your purchase. We are pleased to confirm your order.</p>
-                    
-                    <div class="order-number">
-                        <p>ORDER #{order_id}</p>
-                    </div>
-                    
-                    <div class="details">
-                        <table>
-                            <tr>
-                                <td><strong>Item:</strong> {item_name}</td>
-                                <td style="text-align: right;">${price:,.2f}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Color:</strong> {color}</td>
-                                <td style="text-align: right;"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Size:</strong> {size}</td>
-                                <td style="text-align: right;"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Quantity:</strong> {qty}</td>
-                                <td style="text-align: right;"></td>
-                            </tr>
-                            <tr>
-                                <td><strong>Shipping:</strong></td>
-                                <td style="text-align: right;">${delivery:,.2f}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Tax:</strong></td>
-                                <td style="text-align: right;">${sales_tax:,.2f}</td>
-                            </tr>
-                            <tr class="total">
-                                <td><strong>TOTAL:</strong></td>
-                                <td style="text-align: right;">${total:,.2f}</td>
-                            </tr>
-                        </table>
-                    </div>
-                    
-                    <div style="margin: 30px 0; padding: 20px; background-color: #faf8f5;">
-                        <p><strong>Delivery Address:</strong><br>{address}</p>
-                        <p><strong>Estimated Delivery:</strong><br>{est_date}</p>
-                        <p><strong>Payment Method:</strong><br>{payment}</p>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>Track your order: <a href="#">cartier.com/track/{order_id}</a></p>
-                        <p style="margin: 10px 0;">Customer Service: +33 1 42 18 33 33 | {brand_support['Cartier']}</p>
-                        <p>{brand_websites['Cartier']}</p>
-                        <p style="margin-top: 20px;">© Cartier 2025. All rights reserved.</p>
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
+            </body>
+            </html>
+            """
 
-        message = Mail(
-            from_email=(SENDER_EMAIL, "Cartier"),
-            to_emails=email,
-            subject=f"Order Confirmation #{order_id}",
-            html_content=html_body
-        )
+            # Send email via SendGrid
+            message = Mail(
+                from_email=(SENDER_EMAIL, "Cartier"),
+                to_emails=email,
+                subject=f"Order Confirmation #{order_id}",
+                html_content=html_body
+            )
 
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        sg.send(message)
-        await interaction.followup.send(embed=Embed(title="Success!", description=f"Cartier receipt sent to {email}!", color=Colour.green()), ephemeral=True)
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(message)
+            
+            # Update the user with success
+            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ Cartier receipt sent to {email}!", color=Colour.green()), ephemeral=True)
+            
+        except Exception as e:
+            logger.error(f"Email send error: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description=f"Failed to send email: {str(e)}", color=Colour.red()), ephemeral=True)
 
 # ==================== BASIC MODAL ====================
 class BasicModal(discord.ui.Modal, title="Receipt Details"):
@@ -459,6 +478,7 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY acknowledge to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -469,6 +489,23 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
         try:
             price = float(self.price.value.strip())
             
+            # Send processing message immediately
+            await interaction.followup.send(embed=Embed(title="Processing...", description="⏳ Your receipt is being generated and emailed. This may take a few seconds.", color=Colour.blue()), ephemeral=True)
+            
+            # Send email in background
+            asyncio.create_task(self.process_receipt(
+                interaction, email, price,
+                self.item.value, self.shipping_date.value
+            ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+    
+    async def process_receipt(self, interaction, email, price, item_name, est_date):
+        try:
             # Generate data
             qty = 1
             customer_name = random.choice(FAKE_NAMES)
@@ -484,13 +521,14 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
             order_id = f"{self.brand.upper()[:3]}-{random.randint(100000, 999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
 
-            # Brand-specific HTML templates
+            # Get brand-specific HTML
             html_body = self.get_brand_html(
                 self.brand, customer_name, order_id, 
-                self.item.value, price, qty, delivery, sales_tax, total,
-                address, self.shipping_date.value, payment
+                item_name, price, qty, delivery, sales_tax, total,
+                address, est_date, payment
             )
 
+            # Send email
             message = Mail(
                 from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
                 to_emails=email,
@@ -501,11 +539,20 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"{self.brand} receipt sent to {email}!", color=Colour.green()), ephemeral=True)
+            # Send success message
+            await interaction.followup.send(embed=Embed(
+                title="Success!", 
+                description=f"✅ {self.brand} receipt sent to {email}!", 
+                color=Colour.green()
+            ), ephemeral=True)
 
         except Exception as e:
-            logger.error(f"Error: {e}")
-            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+            logger.error(f"Email send error: {e}")
+            await interaction.followup.send(embed=Embed(
+                title="Error", 
+                description=f"Failed to send email: {str(e)}", 
+                color=Colour.red()
+            ), ephemeral=True)
 
     def get_brand_html(self, brand, customer_name, order_id, item_name, price, qty, delivery, tax, total, address, est_date, payment):
         
@@ -530,7 +577,7 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
                 .price {{ font-size: 24px; font-weight: bold; color: {primary}; }}
                 .footer {{ background: {primary}; color: {secondary}; padding: 20px; text-align: center; }}
                 a {{ color: {secondary}; }}
-                .track-link {{ background: {primary}; color: {secondary}; padding: 12px 24px; text-decoration: none; display: inline-block; margin: 20px 0; }}
+                .track-link {{ background: {primary}; color: {secondary}; padding: 12px 24px; text-decoration: none; display: inline-block; margin: 20px 0; border: 1px solid {secondary}; }}
             </style></head>
             <body>
                 <div class="container">
@@ -545,7 +592,7 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
                             <p>Tax: ${tax:,.2f}</p>
                             <p class="price">TOTAL: ${total:,.2f}</p>
                         </div>
-                        <p><strong>DELIVERY TO:</strong> {address}</p>
+                        <p><strong>DELIVERY TO:</strong><br>{address}</p>
                         <p><strong>EST. DELIVERY:</strong> {est_date}</p>
                         <p><strong>PAYMENT:</strong> {payment}</p>
                         <a href="#" class="track-link">TRACK ORDER</a>
@@ -590,7 +637,7 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
                             <p>Tax: ${tax:,.2f}</p>
                             <p class="total">TOTAL: ${total:,.2f}</p>
                         </div>
-                        <p><strong>Shipping to:</strong> {address}</p>
+                        <p><strong>Shipping to:</strong><br>{address}</p>
                         <p><strong>Delivery by:</strong> {est_date}</p>
                         <p><strong>Payment:</strong> {payment}</p>
                     </div>
@@ -610,7 +657,7 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
             <html>
             <head><style>
                 body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f7; margin: 0; padding: 20px; }}
-                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 18px; overflow: hidden; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; border-radius: 18px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }}
                 .header {{ padding: 40px 30px 20px; text-align: center; }}
                 .header h1 {{ color: {primary}; font-size: 32px; font-weight: 500; }}
                 .content {{ padding: 0 30px 30px; }}
@@ -658,6 +705,13 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
         
         # SEPHORA
         elif brand == "Sephora":
+            beauty_tips = [
+                "✨ Try layering with moisturizer",
+                "💄 Store in a cool, dry place",
+                "🧴 Patch test before use",
+                "🌸 Apply with a damp sponge for dewy finish",
+                "✨ Set with setting spray for all-day wear"
+            ]
             return f"""
             <!DOCTYPE html>
             <html>
@@ -678,4 +732,129 @@ class BasicModal(discord.ui.Modal, title="Receipt Details"):
                     <div class="stripes"></div>
                     <div class="content">
                         <h2 style="color: {primary};">Hi {customer_name},</h2>
-                        <p>Your beauty order is confirmed! Get ready to glow
+                        <p>Your beauty order is confirmed! Get ready to glow.</p>
+                        
+                        <div style="border: 1px solid #000; padding: 20px; margin: 20px 0;">
+                            <p><strong>ORDER #{order_id}</strong></p>
+                            <p>{item_name} - ${price:,.2f}</p>
+                            <p>Subtotal: ${price * qty:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${tax:,.2f}</p>
+                            <p class="price">TOTAL: ${total:,.2f}</p>
+                        </div>
+                        
+                        <div class="beauty-tip">
+                            <p>{random.choice(beauty_tips)}</p>
+                        </div>
+                        
+                        <p><strong>Shipping to:</strong><br>{address}</p>
+                        <p><strong>Arrives:</strong> {est_date}</p>
+                        <p><strong>Payment:</strong> {payment}</p>
+                    </div>
+                    <div class="footer">
+                        <p>Track: sephora.com/orderstatus</p>
+                        <p>BEAUTY INSIDER | sephora.com</p>
+                        <p style="font-size: 12px;">{support}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
+        # LULULEMON
+        elif brand == "Lululemon":
+            return f"""
+            <!DOCTYPE html>
+            <html>
+            <head><style>
+                body {{ font-family: 'Arial', sans-serif; background: #faf9f6; margin: 0; padding: 20px; }}
+                .container {{ max-width: 600px; margin: 0 auto; background: white; }}
+                .header {{ background: {primary}; padding: 30px; text-align: center; }}
+                .header h1 {{ color: white; margin: 0; font-weight: 300; font-size: 36px; }}
+                .content {{ padding: 30px; }}
+                .sweatlife {{ background: {secondary}; padding: 20px; margin: 20px 0; }}
+                .footer {{ background: {primary}; color: white; padding: 20px; text-align: center; }}
+            </style></head>
+            <body>
+                <div class="container">
+                    <div class="header"><h1>lululemon</h1></div>
+                    <div class="content">
+                        <p style="font-size: 18px;">Thanks for moving with us, {customer_name}.</p>
+                        
+                        <div style="margin: 30px 0;">
+                            <p><strong>Order #{order_id}</strong></p>
+                            <p>{item_name} | ${price:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${tax:,.2f}</p>
+                            <p style="font-size: 20px; color: {primary};">Total: ${total:,.2f}</p>
+                        </div>
+                        
+                        <div class="sweatlife">
+                            <p>🧘 Join us for a free yoga class at your local store</p>
+                        </div>
+                        
+                        <p><strong>Delivery to:</strong><br>{address}</p>
+                        <p><strong>Est. delivery:</strong> {est_date}</p>
+                        <p><strong>Payment:</strong> {payment}</p>
+                    </div>
+                    <div class="footer">
+                        <p>sweatlife@lululemon.com | {website}</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+        
+        # DEFAULT TEMPLATE for other brands
+        else:
+            # Generic luxury template for Lanvin, Creed, Baccarat, etc.
+            if brand in ['Lanvin', 'Creed', 'Baccarat', 'Denim Tears', 'Ksubi', 'Balenciaga', 'Sp5der']:
+                return f"""
+                <!DOCTYPE html>
+                <html>
+                <head><style>
+                    body {{ font-family: 'Georgia', serif; background: #f8f8f8; margin: 0; padding: 20px; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background: white; border: 1px solid #ddd; }}
+                    .header {{ background: {primary}; padding: 30px; text-align: center; }}
+                    .header h1 {{ color: {secondary}; margin: 0; font-size: 36px; letter-spacing: 2px; }}
+                    .content {{ padding: 30px; }}
+                    .footer {{ border-top: 1px solid {primary}; padding: 20px; text-align: center; color: #666; }}
+                </style></head>
+                <body>
+                    <div class="container">
+                        <div class="header"><h1>{brand.upper()}</h1></div>
+                        <div class="content">
+                            <p>Dear {customer_name},</p>
+                            <p>Thank you for your order.</p>
+                            <p><strong>Order #{order_id}</strong></p>
+                            <p>{item_name} - ${price:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${tax:,.2f}</p>
+                            <p style="font-size: 18px;"><strong>Total: ${total:,.2f}</strong></p>
+                            <p><strong>Delivery to:</strong> {address}</p>
+                            <p><strong>Estimated delivery:</strong> {est_date}</p>
+                        </div>
+                        <div class="footer">
+                            <p>{website} | {support}</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """
+            else:
+                # Ultra simple fallback
+                return f"""
+                <html>
+                <body>
+                    <h2>{brand}</h2>
+                    <p>Order #{order_id}</p>
+                    <p>Thank you {customer_name}!</p>
+                    <p>{item_name} - ${price:,.2f}</p>
+                    <p>Total: ${total:,.2f}</p>
+                    <p>Delivery: {est_date}</p>
+                </body>
+                </html>
+                """
+
+# Run the bot
+client.run(BOT_TOKEN)
