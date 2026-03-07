@@ -119,7 +119,7 @@ def get_state_from_address(address):
             return state
     return "GA"
 
-# Store user emails (consider using a database like SQLite for production)
+# Store user emails (in memory - resets on restart)
 user_emails = {}
 
 # Store role removal tasks
@@ -220,7 +220,17 @@ class BrandSelect(discord.ui.Select):
         brand = self.values[0]
         logger.info(f"User {interaction.user} selected {brand}")
         
-        modal = GenerateModal(brand, self.user_id)
+        # Check if user has email set
+        if interaction.user.id not in user_emails:
+            await interaction.response.send_message(embed=Embed(title="No Email", description="Run /setup first to save your email!", color=Colour.red()), ephemeral=True)
+            return
+        
+        # Choose modal based on brand
+        if brand == "Cartier":
+            modal = CartierModal(brand, interaction.user.id)
+        else:
+            modal = BasicModal(brand, interaction.user.id)
+        
         await interaction.response.send_modal(modal)
 
 class BrandView(ui.View):
@@ -243,18 +253,18 @@ async def generate(interaction: discord.Interaction):
     view = BrandView(interaction.user.id)
     await interaction.response.send_message(embed=embed, view=view)
 
-# ==================== GENERATE MODAL ====================
-class GenerateModal(discord.ui.Modal, title="Receipt Details"):
+# ==================== CARTIER MODAL (with size & color) ====================
+class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
         self.brand = brand
         self.user_id = user_id
 
-        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100)
-        self.price = TextInput(label="Price per unit in USD", style=discord.TextStyle.short, required=True, max_length=20)
-        self.color = TextInput(label="Color (e.g. Silver, Gold)", style=discord.TextStyle.short, required=True, max_length=20)
-        self.size = TextInput(label="Size (e.g. 52)", style=discord.TextStyle.short, required=True, max_length=10)
-        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
+        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Love Bracelet")
+        self.price = TextInput(label="Price per unit in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 6500")
+        self.color = TextInput(label="Color", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. Rose Gold, Yellow Gold")
+        self.size = TextInput(label="Size", style=discord.TextStyle.short, required=True, max_length=10, placeholder="e.g. 52, 54, 56")
+        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. March 15, 2025")
 
         self.add_item(self.item)
         self.add_item(self.price)
@@ -263,36 +273,154 @@ class GenerateModal(discord.ui.Modal, title="Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Defer response to avoid timeout
         await interaction.response.defer(ephemeral=True)
-
+        
         email = user_emails.get(self.user_id)
         if not email:
-            await interaction.followup.send(embed=Embed(title="No Email", description="Run /setup first!", color=Colour.red()), ephemeral=True)
+            await interaction.followup.send(embed=Embed(title="Error", description="Email not found. Run /setup again.", color=Colour.red()), ephemeral=True)
             return
-
+        
+        await self.send_receipt(interaction, email, 
+                               self.item.value, self.price.value, 
+                               self.color.value, self.size.value, 
+                               self.shipping_date.value)
+    
+    async def send_receipt(self, interaction, email, item_name, price_str, color, size, est_date):
         try:
-            # Validate price
-            try:
-                price = float(self.price.value.strip())
-            except ValueError:
-                await interaction.followup.send(embed=Embed(title="Invalid Price", description="Please enter a valid number", color=Colour.red()), ephemeral=True)
-                return
+            price = float(price_str.strip())
             
-            qty = 1
-            color_choice = self.color.value.strip().title()
-            size_choice = self.size.value.strip()
-            est_date = self.shipping_date.value.strip()
+            # Generate receipt
+            await self.generate_and_send(interaction, email, item_name, price, color, size, est_date)
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+    
+    async def generate_and_send(self, interaction, email, item_name, price, color, size, est_date):
+        qty = 1
+        customer_name = random.choice(FAKE_NAMES)
+        address = random.choice(FAKE_ADDRESSES)
+        state = get_state_from_address(address)
+        tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
-            # Generate fake data
+        subtotal = price * qty
+        base_shipping = random.uniform(8, 18)
+        mult = STATE_SHIPPING_MULTIPLIER.get(state, 1.5)
+        surcharge = random.uniform(0, 8) * (mult - 1)
+        variance = random.uniform(-3, 3)
+        delivery = round(max(5.00, base_shipping + surcharge + variance), 2)
+
+        sales_tax = round(subtotal * tax_rate, 2)
+        total = round(subtotal + delivery + sales_tax, 2)
+
+        order_id = f"{self.brand.upper()}-{random.randint(1000000000000000,9999999999999999)}"
+        payment = random.choice(FAKE_PAYMENT_METHODS)
+
+        html_body = f"""
+        <html>
+        <body style="font-family: Georgia, 'Times New Roman', serif; background:#f8f8f8; color:#111; margin:0; padding:0; font-size:11px; line-height:1.4;">
+        <div style="max-width:580px; margin:20px auto; background:#fff; border:1px solid #ccc;">
+            <div style="background: linear-gradient(to right, #8B0000, #000000); padding:40px 20px; text-align:center;">
+                <h1 style="color:#fff; margin:0; font-size:42px; font-weight:400; letter-spacing:4px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style:italic;">{self.brand}</h1>
+            </div>
+
+            <div style="padding:25px 30px;">
+                <h2 style="text-align:center; font-size:16px; margin:0 0 15px;">Acknowledgment of your order</h2>
+                <p style="text-align:center; margin:0 0 20px;">Dear {customer_name},</p>
+                <p style="margin:0 0 15px;">Thank you for shopping online with {self.brand}.</p>
+                <p style="margin:0 0 15px;">We are pleased to acknowledge receipt of your order, the main details of which are set out below.</p>
+
+                <div style="background:#000; color:#fff; padding:12px; text-align:center; margin:20px 0;">
+                    ORDER N° {order_id}
+                </div>
+
+                <div style="background:#111; color:#eee; padding:15px; margin:15px 0;">
+                    <p style="margin:0 0 5px;"><strong>{item_name}</strong></p>
+                    <p style="margin:0 0 5px;">Color: {color}</p>
+                    <p style="margin:0 0 5px;">Size: {size}</p>
+                    <p style="margin:0 0 5px;">Shipping Cost: ${delivery:,.2f}</p>
+                    <p style="text-align:right; margin:5px 0 0;">${price:,.2f} x {qty}</p>
+                </div>
+
+                <table style="width:100%; font-size:11px; border-collapse:collapse;">
+                    <tr><td style="padding:4px 0;">Estimated delivery date:</td><td style="text-align:right;">{est_date}</td></tr>
+                    <tr><td style="padding:4px 0;">Payment Method:</td><td style="text-align:right;">{payment}</td></tr>
+                    <tr><td colspan="2" style="padding:10px 0 0; border-top:1px solid #aaa;"></td></tr>
+                    <tr><td style="padding:4px 0;"><strong>SUBTOTAL</strong></td><td style="text-align:right;">${subtotal:,.2f}</td></tr>
+                    <tr><td style="padding:4px 0;"><strong>DELIVERY</strong></td><td style="text-align:right;">${delivery:,.2f}</td></tr>
+                    <tr><td style="padding:4px 0;"><strong>Sales Tax</strong> ({tax_rate*100:.1f}%)</td><td style="text-align:right;">${sales_tax:,.2f}</td></tr>
+                    <tr style="font-weight:bold; font-size:12px;"><td style="padding:8px 0 0;">TOTAL</td><td style="text-align:right; padding:8px 0 0;">${total:,.2f}</td></tr>
+                </table>
+
+                <div style="margin:30px 0 0; padding:0; border:1px solid #000;">
+                    <table style="width:100%; font-size:11px; color:#fff; background:#000;">
+                        <tr style="background:#800000;">
+                            <th style="padding:8px;">DELIVERY ADDRESS</th>
+                            <th style="padding:8px;">BILLING ADDRESS</th>
+                        </tr>
+                        <tr style="color:#000; background:#fff;">
+                            <td style="padding:8px;">{customer_name}<br>{address}</td>
+                            <td style="padding:8px;">{customer_name}<br>{address}</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="font-size:10px; color:#444; text-align:center; margin:15px 0;">
+                    {self.brand} Customer Service<br>
+                    Email: CustomerService@{self.brand.lower()}.com
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Send via SendGrid
+        message = Mail(
+            from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
+            to_emails=email,
+            subject=f"Your {self.brand} Order Confirmation",
+            html_content=html_body
+        )
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+        logger.info(f"Email sent to {email} - status {response.status_code}")
+
+        await interaction.followup.send(embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()), ephemeral=True)
+
+# ==================== BASIC MODAL (no size/color for other brands) ====================
+class BasicModal(discord.ui.Modal, title="Receipt Details"):
+    def __init__(self, brand: str, user_id: int):
+        super().__init__(timeout=600)
+        self.brand = brand
+        self.user_id = user_id
+
+        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Hoodie, Shoes, Perfume")
+        self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 250")
+        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. March 15, 2025")
+
+        self.add_item(self.item)
+        self.add_item(self.price)
+        self.add_item(self.shipping_date)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        
+        email = user_emails.get(self.user_id)
+        if not email:
+            await interaction.followup.send(embed=Embed(title="Error", description="Email not found. Run /setup again.", color=Colour.red()), ephemeral=True)
+            return
+        
+        try:
+            price = float(self.price.value.strip())
+            
+            # Generate receipt (no color/size)
+            qty = 1
             customer_name = random.choice(FAKE_NAMES)
             address = random.choice(FAKE_ADDRESSES)
             state = get_state_from_address(address)
             tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
             subtotal = price * qty
-
-            # Calculate shipping
             base_shipping = random.uniform(8, 18)
             mult = STATE_SHIPPING_MULTIPLIER.get(state, 1.5)
             surcharge = random.uniform(0, 8) * (mult - 1)
@@ -304,105 +432,38 @@ class GenerateModal(discord.ui.Modal, title="Receipt Details"):
 
             order_id = f"{self.brand.upper()}-{random.randint(1000000000000000,9999999999999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
-            gift = random.choice(["Gift wrapping added", ""])
 
-            # Create email HTML
             html_body = f"""
             <html>
-            <body style="font-family: Georgia, 'Times New Roman', serif; background:#f8f8f8; color:#111; margin:0; padding:0; font-size:11px; line-height:1.4;">
-            <div style="max-width:580px; margin:20px auto; background:#fff; border:1px solid #ccc;">
-                <div style="background: linear-gradient(to right, #8B0000, #000000); padding:40px 20px; text-align:center;">
-                    <h1 style="color:#fff; margin:0; font-size:42px; font-weight:400; letter-spacing:4px; font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-style:italic;">{self.brand}</h1>
-                </div>
-
-                <div style="padding:25px 30px;">
-                    <h2 style="text-align:center; font-size:16px; margin:0 0 15px;">Acknowledgment of your order</h2>
-                    <p style="text-align:center; margin:0 0 20px;">Dear {customer_name},</p>
-                    <p style="margin:0 0 15px;">Thank you for shopping online with {self.brand}.</p>
-                    <p style="margin:0 0 15px;">We are pleased to acknowledge receipt of your order, the main details of which are set out below. Please check this email to ensure the details are accurate.</p>
-                    <p style="font-style:italic; font-size:10px; color:#555; margin:0 0 20px;">Please note that this acknowledgment is not a confirmation of your order. Once your order has been approved, you will receive another email confirming acceptance at the time of shipment.</p>
-
-                    <p style="text-align:center; margin:10px 0;"><a href="#" style="color:#000; text-decoration:underline;">To track your order online from your My{self.brand} account, click here: track order</a></p>
-
-                    <div style="background:#000; color:#fff; padding:12px; text-align:center; margin:20px 0;">
-                        ORDER N° {order_id}
-                    </div>
-
-                    <div style="background:#111; color:#eee; padding:15px; margin:15px 0;">
-                        <p style="margin:0 0 5px;"><strong>{self.item.value}</strong></p>
-                        <p style="margin:0 0 5px;">Color: {color_choice}</p>
-                        <p style="margin:0 0 5px;">Size: {size_choice}</p>
-                        <p style="margin:0 0 5px;">{gift}</p>
-                        <p style="margin:0 0 5px;">Shipping Cost: ${delivery:,.2f}</p>
-                        <p style="text-align:right; margin:5px 0 0;">${price:,.2f} x {qty}</p>
-                    </div>
-
-                    <table style="width:100%; font-size:11px; border-collapse:collapse;">
-                        <tr><td style="padding:4px 0;">Estimated delivery date:</td><td style="text-align:right;">{est_date}</td></tr>
-                        <tr><td style="padding:4px 0;">Payment Method:</td><td style="text-align:right;">{payment}</td></tr>
-                        <tr><td colspan="2" style="padding:10px 0 0; border-top:1px solid #aaa;"></td></tr>
-                        <tr><td style="padding:4px 0;"><strong>SUBTOTAL</strong> incl. tax</td><td style="text-align:right;">${subtotal:,.2f}</td></tr>
-                        <tr><td style="padding:4px 0;"><strong>DELIVERY</strong> incl. tax</td><td style="text-align:right;">${delivery:,.2f}</td></tr>
-                        <tr><td style="padding:4px 0;"><strong>Sales Tax</strong> ({tax_rate*100:.1f}%)</td><td style="text-align:right;">${sales_tax:,.2f}</td></tr>
-                        <tr style="font-weight:bold; font-size:12px;"><td style="padding:8px 0 0;">TOTAL</td><td style="text-align:right; padding:8px 0 0;">${total:,.2f} incl. tax</td></tr>
-                    </table>
-
-                    <div style="margin:30px 0 0; padding:0; border:1px solid #000;">
-                        <table style="width:100%; font-size:11px; color:#fff; background:#000;">
-                            <tr style="background:#800000;">
-                                <th style="padding:8px;">DELIVERY ADDRESS</th>
-                                <th style="padding:8px;">BILLING ADDRESS</th>
-                                <th style="padding:8px;">NOTE</th>
-                            </tr>
-                            <tr style="color:#000; background:#fff;">
-                                <td style="padding:8px;">{customer_name}<br>{address}</td>
-                                <td style="padding:8px;">{customer_name}<br>{address}</td>
-                                <td style="padding:8px;">Shipping preferences customized during checkout.</td>
-                            </tr>
-                        </table>
-                    </div>
-
-                    <p style="text-align:center; margin:20px 0; font-size:12px;">If you need further information please visit the <a href="#" style="color:#000; text-decoration:underline;">Contact us</a> page.</p>
-
-                    <div style="text-align:center; background:#111; color:#aaa; padding:10px; font-size:10px;">
-                        Stay Connected<br>
-                        Latest news • {self.brand} Official Channel • Mobile Applications
-                    </div>
-
-                    <div style="text-align:center; font-size:10px; color:#555; margin:15px 0;">
-                        TERMS OF USE • CONDITIONS OF SALE • CONTACT AN AMBASSADOR
-                    </div>
-
-                    <div style="font-size:10px; color:#444; text-align:center; line-height:1.3;">
-                        RLG Europe BV<br>PO Box 2967<br>NL-1000 CZ Amsterdam<br>Netherlands<br><br>
-                        {self.brand} Customer Contact Centre<br>+41 22 334 18 123<br>Email: CustomerService.RNE@{self.brand.lower()}.com
-                    </div>
-
-                    <p style="font-size:9px; color:#777; text-align:center; margin:20px 0;">
-                        By clicking the links provided, you consent to our Privacy Notice & Conditions of Sale.<br>
-                        Copyright © 2025 {self.brand}
-                    </p>
-                </div>
+            <body style="font-family: Arial, sans-serif;">
+                <h2>Your {self.brand} Order</h2>
+                <p>Order #{order_id}</p>
+                <p>Item: {self.item.value}</p>
+                <p>Price: ${price:,.2f}</p>
+                <p>Shipping: ${delivery:,.2f}</p>
+                <p>Tax: ${sales_tax:,.2f}</p>
+                <p><strong>Total: ${total:,.2f}</strong></p>
+                <p>Delivery by: {self.shipping_date.value}</p>
+                <p>Shipping to: {address}</p>
             </body>
             </html>
             """
 
-            # Send email via SendGrid
             message = Mail(
                 from_email=(SENDER_EMAIL, brand_display.get(self.brand, self.brand)),
                 to_emails=email,
-                subject=f"Your {self.brand} Order Confirmation",
+                subject=f"Your {self.brand} Order",
                 html_content=html_body
             )
 
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             response = sg.send(message)
-            logger.info(f"Email sent - status {response.status_code}")
+            logger.info(f"Email sent to {email} - status {response.status_code}")
 
             await interaction.followup.send(embed=Embed(title="Success!", description=f"Receipt sent to {email}!", color=Colour.green()), ephemeral=True)
 
         except Exception as e:
-            logger.error(f"Submit error: {e}")
+            logger.error(f"Error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
 # Run the bot
