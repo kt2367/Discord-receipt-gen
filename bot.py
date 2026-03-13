@@ -39,12 +39,12 @@ brand_assets = {
         'website': 'https://www.cartier.com',
         'customer_service': 'https://www.cartier.com/customer-service',
         'support_email': 'contact@cartier.com',
-        'color_primary': '#8B0000',  # Burgundy red - their iconic box color
-        'color_secondary': '#D4AF37',  # Gold
-        'font_headline': 'Helvetica, Arial, sans-serif',  # They use sans-serif for headlines [citation:1]
+        'color_primary': '#8B0000',
+        'color_secondary': '#D4AF37',
+        'font_headline': 'Helvetica, Arial, sans-serif',
         'font_body': 'Georgia, Times New Roman, serif',
-        'line_spacing': '150%',  # They use 150% line spacing [citation:1]
-        'signature': 'Magic inside every red box'  # Their catchy signature [citation:1]
+        'line_spacing': '150%',
+        'signature': 'Magic inside every red box'
     },
     'Nike': {
         'name': 'Nike',
@@ -55,10 +55,9 @@ brand_assets = {
         'support_email': 'service@nike.com',
         'color_primary': '#000000',
         'color_secondary': '#FFFFFF',
-        'cta_color': '#0066FF',  # Bold blue for track button [citation:2]
+        'cta_color': '#0066FF',
         'font_headline': 'Helvetica, Arial, sans-serif',
-        'font_body': 'Helvetica, Arial, sans-serif',
-        'style': 'Ultra simple and scannable, bold aesthetic'  # [citation:8]
+        'font_body': 'Helvetica, Arial, sans-serif'
     },
     'Adidas': {
         'name': 'adidas',
@@ -68,7 +67,7 @@ brand_assets = {
         'customer_service': 'https://www.adidas.com/help',
         'support_email': 'customer.service@adidas.com',
         'color_primary': '#000000',
-        'color_secondary': '#00FF00',  # Lime green
+        'color_secondary': '#00FF00',
         'font_headline': 'Arial, sans-serif',
         'font_body': 'Arial, sans-serif'
     },
@@ -94,8 +93,7 @@ brand_assets = {
         'color_primary': '#000000',
         'color_secondary': '#FFFFFF',
         'font_headline': 'Arial, sans-serif',
-        'font_body': 'Arial, sans-serif',
-        'style': 'Clean layout with smart spacing, bigger product images'  # [citation:1]
+        'font_body': 'Arial, sans-serif'
     },
     'Lululemon': {
         'name': 'lululemon',
@@ -104,7 +102,7 @@ brand_assets = {
         'website': 'https://shop.lululemon.com',
         'customer_service': 'https://shop.lululemon.com/help/contact-us',
         'support_email': 'gea@lululemon.com',
-        'sender_email': 'email@whatwelove.lululemon.com.hk',  # Their actual sender [citation:1]
+        'sender_email': 'email@whatwelove.lululemon.com.hk',
         'color_primary': '#4B6E5E',
         'color_secondary': '#F0E9E0',
         'font_headline': 'Arial, sans-serif',
@@ -116,10 +114,10 @@ brand_assets = {
         'logo_white': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/Creed_logo.svg/512px-Creed_logo.svg.png',
         'website': 'https://www.creedboutique.com',
         'customer_service': 'https://www.creedboutique.com/customer-service',
-        'support_email': 'customerservices@creedfragrances.co.uk',  # Actual support email [citation:3]
+        'support_email': 'customerservices@creedfragrances.co.uk',
         'color_primary': '#1E2F4A',
         'color_secondary': '#C5B4A3',
-        'font_headline': 'Georgia, Times New Roman, serif',  # Classic serif for heritage [citation:7]
+        'font_headline': 'Georgia, Times New Roman, serif',
         'font_body': 'Georgia, Times New Roman, serif'
     },
     'Baccarat': {
@@ -145,8 +143,8 @@ brand_assets = {
         'color_secondary': '#8B8B8B',
         'font_headline': 'Arial, Helvetica, sans-serif',
         'font_body': 'Arial, Helvetica, sans-serif',
-        'shipping_cutoff': '2pm',  # Orders before 2pm dispatched same day [citation:4]
-        'authority_to_leave': True  # ATL with photo proof [citation:4]
+        'shipping_cutoff': '2pm',
+        'authority_to_leave': True
     },
     'Denim Tears': {
         'name': 'Denim Tears',
@@ -159,7 +157,7 @@ brand_assets = {
         'color_secondary': '#C4A962',
         'font_headline': 'Arial, Helvetica, sans-serif',
         'font_body': 'Arial, Helvetica, sans-serif',
-        'processing_days': '4-7 days'  # Time to process before shipping
+        'processing_days': '4-7 days'
     },
     'Balenciaga': {
         'name': 'Balenciaga',
@@ -351,7 +349,7 @@ class BrandSelect(discord.ui.Select):
             await interaction.response.send_message(embed=Embed(title="No Email", description="Run /setup first to save your email!", color=Colour.red()), ephemeral=True)
             return
         
-        # BRAND-SPECIFIC MODALS based on what they sell
+        # BRAND-SPECIFIC MODALS
         if brand == "Cartier":
             modal = CartierModal(brand, interaction.user.id)
         elif brand in ["Nike", "Adidas"]:
@@ -393,7 +391,7 @@ async def generate(interaction: discord.Interaction):
     view = BrandView(interaction.user.id)
     await interaction.response.send_message(embed=embed, view=view)
 
-# ==================== CARTIER MODAL ====================
+# ==================== CARTIER MODAL (FIXED) ====================
 class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -402,10 +400,10 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
         self.assets = brand_assets[brand]
 
         self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Love Bracelet, Tank Watch")
-        self.metal = TextInput(label="Metal", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. Rose Gold, Yellow Gold")
+        self.metal = TextInput(label="Metal/Color", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. Rose Gold, Yellow Gold")
         self.size = TextInput(label="Size", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 52, 54, 56")
         self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 6500")
-        self.shipping_date = TextInput(label="Delivery date", style=discord.TextStyle.short, required=True, max_length=30)
+        self.shipping_date = TextInput(label="Delivery date", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. March 20, 2025")
 
         self.add_item(self.item)
         self.add_item(self.metal)
@@ -414,6 +412,7 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -423,18 +422,31 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await interaction.followup.send(embed=Embed(title="Processing...", description="⏳ Your Cartier receipt is being generated.", color=Colour.blue()), ephemeral=True)
             
-            asyncio.create_task(self.send_receipt(
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description="⏳ Your Cartier receipt is being generated. This may take a few seconds.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background task (non-blocking)
+            asyncio.create_task(self.send_cartier_receipt(
                 interaction, email, 
                 self.item.value, self.metal.value, self.size.value, price,
                 self.shipping_date.value
             ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
         except Exception as e:
             logger.error(f"Error: {e}")
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
     
-    async def send_receipt(self, interaction, email, item_name, metal, size, price, est_date):
+    async def send_cartier_receipt(self, interaction, email, item_name, metal, size, price, est_date):
         try:
             qty = 1
             customer_name = random.choice(FAKE_NAMES)
@@ -450,7 +462,6 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
             order_id = f"CRT-{random.randint(1000000, 9999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
 
-            # EXACT CARTIER RECEIPT based on research [citation:1]
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -534,7 +545,6 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
             </html>
             """
 
-            # Send order confirmation email
             message = Mail(
                 from_email=(SENDER_EMAIL, "Cartier"),
                 to_emails=email,
@@ -545,25 +555,28 @@ class CartierModal(discord.ui.Modal, title="Cartier Receipt Details"):
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            # Also send a shipping notification (they send multiple emails in sequence)
-            await asyncio.sleep(2)  # Simulate delay between emails
-            shipping_body = html_body.replace("Order Confirmation", "Shipping Confirmation").replace("Thank you for your purchase", "Your order has shipped")
-            
-            message2 = Mail(
-                from_email=(SENDER_EMAIL, "Cartier"),
-                to_emails=email,
-                subject=f"Shipping Confirmation #{order_id}",
-                html_content=shipping_body
+            # Send success message
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ Cartier receipt sent to {email}!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
             )
-            sg.send(message2)
-            
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ Cartier receipt sent to {email}!", color=Colour.green()), ephemeral=True)
             
         except Exception as e:
             logger.error(f"Email error: {e}")
-            await interaction.followup.send(embed=Embed(title="Error", description=f"Failed: {str(e)}", color=Colour.red()), ephemeral=True)
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Error", 
+                    description=f"Failed to send email: {str(e)}", 
+                    color=Colour.red()
+                ), 
+                ephemeral=True
+            )
 
-# ==================== NIKE MODAL ====================
+# ==================== NIKE/ADIDAS MODAL (FIXED) ====================
 class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -584,6 +597,7 @@ class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -593,13 +607,26 @@ class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await interaction.followup.send(embed=Embed(title="Processing...", description=f"⏳ Your {self.brand} receipt is being generated.", color=Colour.blue()), ephemeral=True)
             
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your {self.brand} receipt is being generated. This may take a few seconds.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
             asyncio.create_task(self.send_receipt(
                 interaction, email, 
                 self.item.value, self.size.value, self.color.value, price,
                 self.shipping_date.value
             ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
@@ -619,11 +646,9 @@ class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
             order_id = f"{self.brand[:3].upper()}-{random.randint(100000, 999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
             
-            # Generate a fake product image URL (Nike always shows product images) [citation:2]
-            product_image = f"https://placekitten.com/200/200"  # Replace with actual product image logic
+            product_image = f"https://placekitten.com/200/200"
 
             if self.brand == "Nike":
-                # EXACT NIKE RECEIPT based on research [citation:2][citation:8]
                 html_body = f"""
                 <!DOCTYPE html>
                 <html>
@@ -697,7 +722,6 @@ class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
                 </html>
                 """
             else:  # ADIDAS
-                # ADIDAS receipt based on their email sequence [citation:5]
                 html_body = f"""
                 <!DOCTYPE html>
                 <html>
@@ -754,7 +778,6 @@ class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
                 </html>
                 """
 
-            # Send order confirmation email
             message = Mail(
                 from_email=(SENDER_EMAIL, self.brand),
                 to_emails=email,
@@ -765,30 +788,19 @@ class SportswearModal(discord.ui.Modal, title="Nike/Adidas Receipt Details"):
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            # Send shipping confirmation with tracking (they send multiple emails) [citation:5]
-            await asyncio.sleep(2)
-            tracking_body = html_body.replace("confirmed and being prepared", "has shipped")
-            tracking_body += f"""
-            <div style="margin:20px 0; padding:15px; background:#f0f0f0;">
-                <p><strong>TRACKING NUMBER:</strong> 1Z{random.randint(100,999)}ABC{random.randint(1000,9999)}</p>
-                <p>Track at: <a href="{self.assets['website']}/track">adidas.com/track</a></p>
-            </div>
-            """
-            
-            message2 = Mail(
-                from_email=(SENDER_EMAIL, self.brand),
-                to_emails=email,
-                subject=f"Your order has shipped! #{order_id}",
-                html_content=tracking_body
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ {self.brand} receipt sent! Check your email.", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
             )
-            sg.send(message2)
-            
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ {self.brand} receipt sent! Check your email for order confirmation and shipping updates.", color=Colour.green()), ephemeral=True)
             
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
-# ==================== CREED MODAL ====================
+# ==================== CREED MODAL (FIXED) ====================
 class FragranceModal(discord.ui.Modal, title="Creed/Baccarat Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -809,6 +821,7 @@ class FragranceModal(discord.ui.Modal, title="Creed/Baccarat Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -818,13 +831,26 @@ class FragranceModal(discord.ui.Modal, title="Creed/Baccarat Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await interaction.followup.send(embed=Embed(title="Processing...", description=f"⏳ Your {self.brand} receipt is being generated.", color=Colour.blue()), ephemeral=True)
             
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your {self.brand} receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
             asyncio.create_task(self.send_receipt(
                 interaction, email, 
                 self.item.value, self.size.value, self.concentration.value, price,
                 self.shipping_date.value
             ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
@@ -837,14 +863,13 @@ class FragranceModal(discord.ui.Modal, title="Creed/Baccarat Receipt Details"):
             tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
             subtotal = price * qty
-            delivery = 0  # Creed offers complimentary delivery [citation:3]
+            delivery = 0
             sales_tax = round(subtotal * tax_rate, 2)
             total = round(subtotal + sales_tax, 2)
 
             order_id = f"{self.brand[:3].upper()}-{random.randint(100000, 999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
 
-            # EXACT CREED RECEIPT based on their policies [citation:3]
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -887,20 +912,20 @@ class FragranceModal(discord.ui.Modal, title="Creed/Baccarat Receipt Details"):
                         
                         <div class="delivery-slot">
                             <p><strong>Delivery Information:</strong></p>
-                            <p>• Complimentary standard delivery (2-7 working days) [citation:3]</p>
+                            <p>• Complimentary standard delivery (2-7 working days)</p>
                             <p>• You'll receive an email with tracking when your order ships</p>
                             <p>• A one-hour delivery slot will be allocated for premium deliveries</p>
                         </div>
                         
                         <p style="font-size: 12px; color: #666;">
-                            Returns accepted within 30 days of dispatch if unused and in original condition [citation:3]
+                            Returns accepted within 30 days of dispatch if unused and in original condition
                         </p>
                     </div>
                     <div class="footer">
                         <p><a href="{self.assets['website']}">{self.assets['website'].replace('https://', '')}</a> | <a href="{self.assets['customer_service']}">Customer Service</a></p>
                         <div class="contact-info">
                             <p>Customer Service: Monday-Saturday 9:30am-5:30pm</p>
-                            <p>Email: {self.assets['support_email']} | Tel: +44 330 053 2398 [citation:3]</p>
+                            <p>Email: {self.assets['support_email']} | Tel: +44 330 053 2398</p>
                         </div>
                     </div>
                 </div>
@@ -918,12 +943,19 @@ class FragranceModal(discord.ui.Modal, title="Creed/Baccarat Receipt Details"):
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ {self.brand} receipt sent!", color=Colour.green()), ephemeral=True)
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ {self.brand} receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
             
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
-# ==================== KSUBI MODAL ====================
+# ==================== KSUBI MODAL (FIXED) ====================
 class StreetwearModal(discord.ui.Modal, title="Streetwear Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -944,6 +976,7 @@ class StreetwearModal(discord.ui.Modal, title="Streetwear Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -953,13 +986,26 @@ class StreetwearModal(discord.ui.Modal, title="Streetwear Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await interaction.followup.send(embed=Embed(title="Processing...", description=f"⏳ Your {self.brand} receipt is being generated.", color=Colour.blue()), ephemeral=True)
             
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your {self.brand} receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
             asyncio.create_task(self.send_receipt(
                 interaction, email, 
                 self.item.value, self.size.value, self.color.value, price,
                 self.shipping_date.value
             ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
@@ -979,10 +1025,8 @@ class StreetwearModal(discord.ui.Modal, title="Streetwear Receipt Details"):
             order_id = f"{self.brand[:3].upper()}-{random.randint(100000, 999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
             
-            # KSUBI specific: orders before 2pm dispatched same day [citation:4]
             dispatch_time = "today" if random.choice([True, False]) else "tomorrow"
-            
-            # EXACT KSUBI RECEIPT based on their policies [citation:4][citation:10]
+
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -1022,13 +1066,13 @@ class StreetwearModal(discord.ui.Modal, title="Streetwear Receipt Details"):
                         
                         <div class="dispatch-note">
                             <p><strong>Dispatch Information:</strong></p>
-                            <p>• Orders placed before 2pm are dispatched {dispatch_time} [citation:4]</p>
-                            <p>• You'll receive an email with tracking when your parcel leaves our distribution centre [citation:4]</p>
-                            <p>• All orders are tracked by the delivery carrier [citation:4]</p>
+                            <p>• Orders placed before 2pm are dispatched {dispatch_time}</p>
+                            <p>• You'll receive an email with tracking when your parcel leaves our distribution centre</p>
+                            <p>• All orders are tracked by the delivery carrier</p>
                         </div>
                         
                         <div class="atl-note">
-                            <p><strong>Authority to Leave (ATL):</strong> This parcel may be left in a safe location. A photo will be taken as proof of delivery. [citation:4]</p>
+                            <p><strong>Authority to Leave (ATL):</strong> This parcel may be left in a safe location. A photo will be taken as proof of delivery.</p>
                         </div>
                         
                         <p style="text-align:center; margin:20px 0;">
@@ -1054,12 +1098,19 @@ class StreetwearModal(discord.ui.Modal, title="Streetwear Receipt Details"):
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ {self.brand} receipt sent!", color=Colour.green()), ephemeral=True)
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ {self.brand} receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
             
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
-# ==================== LULULEMON MODAL ====================
+# ==================== LULULEMON MODAL (FIXED) ====================
 class AthleisureModal(discord.ui.Modal, title="Lululemon Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -1080,6 +1131,7 @@ class AthleisureModal(discord.ui.Modal, title="Lululemon Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -1089,13 +1141,26 @@ class AthleisureModal(discord.ui.Modal, title="Lululemon Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await interaction.followup.send(embed=Embed(title="Processing...", description=f"⏳ Your Lululemon receipt is being generated.", color=Colour.blue()), ephemeral=True)
             
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your Lululemon receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
             asyncio.create_task(self.send_receipt(
                 interaction, email, 
                 self.item.value, self.size.value, self.color.value, price,
                 self.shipping_date.value
             ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
@@ -1115,7 +1180,6 @@ class AthleisureModal(discord.ui.Modal, title="Lululemon Receipt Details"):
             order_id = f"LULU-{random.randint(100000, 999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
 
-            # EXACT LULULEMON RECEIPT
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -1169,7 +1233,6 @@ class AthleisureModal(discord.ui.Modal, title="Lululemon Receipt Details"):
             </html>
             """
 
-            # Use their actual sender email format [citation:1]
             message = Mail(
                 from_email=(SENDER_EMAIL, "lululemon"),
                 to_emails=email,
@@ -1180,12 +1243,19 @@ class AthleisureModal(discord.ui.Modal, title="Lululemon Receipt Details"):
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ Lululemon receipt sent!", color=Colour.green()), ephemeral=True)
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ Lululemon receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
             
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
-# ==================== APPLE MODAL ====================
+# ==================== APPLE MODAL (FIXED) ====================
 class TechModal(discord.ui.Modal, title="Apple Receipt Details"):
     def __init__(self, brand: str, user_id: int):
         super().__init__(timeout=600)
@@ -1206,6 +1276,7 @@ class TechModal(discord.ui.Modal, title="Apple Receipt Details"):
         self.add_item(self.shipping_date)
 
     async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
         await interaction.response.defer(ephemeral=True)
         
         email = user_emails.get(self.user_id)
@@ -1215,13 +1286,26 @@ class TechModal(discord.ui.Modal, title="Apple Receipt Details"):
         
         try:
             price = float(self.price.value.strip())
-            await interaction.followup.send(embed=Embed(title="Processing...", description=f"⏳ Your Apple receipt is being generated.", color=Colour.blue()), ephemeral=True)
             
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your Apple receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
             asyncio.create_task(self.send_receipt(
                 interaction, email, 
                 self.item.value, self.storage.value, self.color.value, price,
                 self.shipping_date.value
             ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
@@ -1234,14 +1318,13 @@ class TechModal(discord.ui.Modal, title="Apple Receipt Details"):
             tax_rate = STATE_TAX_RATES.get(state, 0.0749)
 
             subtotal = price * qty
-            delivery = 0  # Apple often has free shipping
+            delivery = 0
             sales_tax = round(subtotal * tax_rate, 2)
             total = round(subtotal + sales_tax, 2)
 
-            order_id = f"W{random.randint(10000000, 99999999)}"  # Apple format: W68676604 [citation:6]
+            order_id = f"W{random.randint(10000000, 99999999)}"
             payment = random.choice(FAKE_PAYMENT_METHODS)
 
-            # EXACT APPLE RECEIPT [citation:6]
             html_body = f"""
             <!DOCTYPE html>
             <html>
@@ -1303,20 +1386,450 @@ class TechModal(discord.ui.Modal, title="Apple Receipt Details"):
             message = Mail(
                 from_email=(SENDER_EMAIL, "Apple"),
                 to_emails=email,
-                subject=f"Shipment Notification {order_id}",  # Apple's subject line format [citation:6]
+                subject=f"Shipment Notification {order_id}",
                 html_content=html_body
             )
 
             sg = SendGridAPIClient(SENDGRID_API_KEY)
             sg.send(message)
             
-            await interaction.followup.send(embed=Embed(title="Success!", description=f"✅ Apple receipt sent!", color=Colour.green()), ephemeral=True)
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ Apple receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
             
         except Exception as e:
             await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
-# ==================== REMAINING MODALS (Beauty, Luxury, Basic) ====================
-# [BeautyModal, LuxuryModal, BasicModal follow same pattern but truncated for length]
+# ==================== BEAUTY MODAL (SEPHORA) - FIXED ====================
+class BeautyModal(discord.ui.Modal, title="Sephora Receipt Details"):
+    def __init__(self, brand: str, user_id: int):
+        super().__init__(timeout=600)
+        self.brand = brand
+        self.user_id = user_id
+        self.assets = brand_assets[brand]
+
+        self.item = TextInput(label="Product name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Rare Beauty Mascara")
+        self.shade = TextInput(label="Shade/Color", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. Black, Perfect Shade")
+        self.size = TextInput(label="Size", style=discord.TextStyle.short, required=False, max_length=20, placeholder="e.g. 0.5 oz, full size")
+        self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 24")
+        self.shipping_date = TextInput(label="Delivery date", style=discord.TextStyle.short, required=True, max_length=30)
+
+        self.add_item(self.item)
+        self.add_item(self.shade)
+        self.add_item(self.size)
+        self.add_item(self.price)
+        self.add_item(self.shipping_date)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+        
+        email = user_emails.get(self.user_id)
+        if not email:
+            await interaction.followup.send(embed=Embed(title="Error", description="Email not found. Run /setup again.", color=Colour.red()), ephemeral=True)
+            return
+        
+        try:
+            price = float(self.price.value.strip())
+            
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your Sephora receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
+            asyncio.create_task(self.send_receipt(
+                interaction, email, 
+                self.item.value, self.shade.value, self.size.value, price,
+                self.shipping_date.value
+            ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+
+    async def send_receipt(self, interaction, email, item_name, shade, size, price, est_date):
+        try:
+            qty = 1
+            customer_name = random.choice(FAKE_NAMES)
+            address = random.choice(FAKE_ADDRESSES)
+            state = get_state_from_address(address)
+            tax_rate = STATE_TAX_RATES.get(state, 0.0749)
+
+            subtotal = price * qty
+            delivery = round(random.uniform(5, 10), 2)
+            sales_tax = round(subtotal * tax_rate, 2)
+            total = round(subtotal + delivery + sales_tax, 2)
+
+            order_id = f"SEP-{random.randint(100000, 999999)}"
+            payment = random.choice(FAKE_PAYMENT_METHODS)
+            
+            beauty_tips = [
+                "✨ Try layering with moisturizer for extra glow",
+                "💄 Store in a cool, dry place",
+                "🧴 Patch test before use",
+                "🌸 Apply with a damp sponge for dewy finish",
+                "✨ Set with setting spray for all-day wear"
+            ]
+
+            html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: '{self.assets['font_body']}'; background: #fff; margin: 0; padding: 20px; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background: #fff; }}
+                    .header {{ background: {self.assets['color_primary']}; padding: 30px; text-align: center; }}
+                    .header img {{ max-width: 150px; filter: brightness(0) invert(1); }}
+                    .stripes {{ background: repeating-linear-gradient(45deg, {self.assets['color_primary']}, {self.assets['color_primary']} 10px, {self.assets['color_secondary']} 10px, {self.assets['color_secondary']} 20px); height: 10px; }}
+                    .content {{ padding: 30px; }}
+                    .beauty-tip {{ background: #f8f8f8; padding: 15px; margin: 20px 0; border-left: 4px solid {self.assets['color_primary']}; }}
+                    .footer {{ text-align: center; padding: 20px; background: #f8f8f8; }}
+                    .footer a {{ color: {self.assets['color_primary']}; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <img src="{self.assets['logo_white']}" alt="SEPHORA">
+                    </div>
+                    <div class="stripes"></div>
+                    <div class="content">
+                        <h2 style="color: {self.assets['color_primary']};">Hi {customer_name},</h2>
+                        <p>Your beauty order is confirmed! Get ready to glow.</p>
+                        
+                        <div style="border: 1px solid #000; padding: 20px; margin: 20px 0;">
+                            <p><strong>ORDER #{order_id}</strong></p>
+                            <p>{item_name} - Shade: {shade} {f'| Size: {size}' if size else ''}</p>
+                            <p>Price: ${price:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${sales_tax:,.2f}</p>
+                            <p style="font-size:20px;"><strong>TOTAL: ${total:,.2f}</strong></p>
+                        </div>
+                        
+                        <div class="beauty-tip">
+                            <p>{random.choice(beauty_tips)}</p>
+                        </div>
+                        
+                        <p><strong>Shipping to:</strong><br>{address}</p>
+                        <p><strong>Arrives:</strong> {est_date}</p>
+                        <p><strong>Payment:</strong> {payment}</p>
+                    </div>
+                    <div class="footer">
+                        <p>Track: <a href="{self.assets['website']}/orderstatus">sephora.com/orderstatus</a></p>
+                        <p>BEAUTY INSIDER | <a href="{self.assets['website']}">sephora.com</a> | <a href="{self.assets['customer_service']}">Help</a></p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = Mail(
+                from_email=(SENDER_EMAIL, "Sephora"),
+                to_emails=email,
+                subject=f"Your Sephora Order #{order_id}",
+                html_content=html_body
+            )
+
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(message)
+            
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ Sephora receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+
+# ==================== LUXURY MODAL (Balenciaga/Lanvin) - FIXED ====================
+class LuxuryModal(discord.ui.Modal, title="Luxury Fashion Receipt Details"):
+    def __init__(self, brand: str, user_id: int):
+        super().__init__(timeout=600)
+        self.brand = brand
+        self.user_id = user_id
+        self.assets = brand_assets[brand]
+
+        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100, placeholder="e.g. Dress, Suit, Bag")
+        self.size = TextInput(label="Size", style=discord.TextStyle.short, required=True, max_length=10, placeholder="e.g. 38, 40, S, M")
+        self.color = TextInput(label="Color", style=discord.TextStyle.short, required=True, max_length=30, placeholder="e.g. Black, Navy")
+        self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20, placeholder="e.g. 2150")
+        self.shipping_date = TextInput(label="Delivery date", style=discord.TextStyle.short, required=True, max_length=30)
+
+        self.add_item(self.item)
+        self.add_item(self.size)
+        self.add_item(self.color)
+        self.add_item(self.price)
+        self.add_item(self.shipping_date)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+        
+        email = user_emails.get(self.user_id)
+        if not email:
+            await interaction.followup.send(embed=Embed(title="Error", description="Email not found. Run /setup again.", color=Colour.red()), ephemeral=True)
+            return
+        
+        try:
+            price = float(self.price.value.strip())
+            
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your {self.brand} receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
+            asyncio.create_task(self.send_receipt(
+                interaction, email, 
+                self.item.value, self.size.value, self.color.value, price,
+                self.shipping_date.value
+            ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+
+    async def send_receipt(self, interaction, email, item_name, size, color, price, est_date):
+        try:
+            qty = 1
+            customer_name = random.choice(FAKE_NAMES)
+            address = random.choice(FAKE_ADDRESSES)
+            state = get_state_from_address(address)
+            tax_rate = STATE_TAX_RATES.get(state, 0.0749)
+
+            subtotal = price * qty
+            delivery = round(random.uniform(25, 40), 2)
+            sales_tax = round(subtotal * tax_rate, 2)
+            total = round(subtotal + delivery + sales_tax, 2)
+
+            order_id = f"{self.brand[:3].upper()}-{random.randint(100000, 999999)}"
+            payment = random.choice(FAKE_PAYMENT_METHODS)
+
+            html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: '{self.assets['font_body']}'; background: #f8f8f8; margin: 0; padding: 20px; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background: white; border: 1px solid #ddd; }}
+                    .header {{ background: {self.assets['color_primary']}; padding: 40px; text-align: center; }}
+                    .header img {{ max-width: 180px; filter: brightness(0) invert(1); }}
+                    .content {{ padding: 40px; }}
+                    .details {{ border-top: 1px solid {self.assets['color_secondary']}; border-bottom: 1px solid {self.assets['color_secondary']}; padding: 20px 0; margin: 20px 0; }}
+                    .footer {{ text-align: center; padding: 30px; background: #f8f8f8; }}
+                    .footer a {{ color: {self.assets['color_primary']}; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <img src="{self.assets['logo_white']}" alt="{self.brand}">
+                    </div>
+                    <div class="content">
+                        <p>Dear {customer_name},</p>
+                        <p>Thank you for your order from {self.brand}.</p>
+                        
+                        <div class="details">
+                            <p style="font-size: 18px;"><strong>Order #{order_id}</strong></p>
+                            <p>{item_name}</p>
+                            <p>Size: {size} | Color: {color}</p>
+                            <p>Price: ${price:,.2f}</p>
+                            <p>Shipping: ${delivery:,.2f}</p>
+                            <p>Tax: ${sales_tax:,.2f}</p>
+                            <p style="font-size: 20px;"><strong>Total: ${total:,.2f}</strong></p>
+                        </div>
+                        
+                        <p><strong>Delivery Address:</strong><br>{address}</p>
+                        <p><strong>Estimated Delivery:</strong> {est_date}</p>
+                    </div>
+                    <div class="footer">
+                        <p><a href="{self.assets['website']}">{self.assets['website'].replace('https://', '')}</a> | <a href="{self.assets['customer_service']}">Client Services</a></p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = Mail(
+                from_email=(SENDER_EMAIL, self.brand),
+                to_emails=email,
+                subject=f"Your {self.brand} Order #{order_id}",
+                html_content=html_body
+            )
+
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(message)
+            
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ {self.brand} receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+
+# ==================== BASIC MODAL (Fallback) - FIXED ====================
+class BasicModal(discord.ui.Modal, title="Receipt Details"):
+    def __init__(self, brand: str, user_id: int):
+        super().__init__(timeout=600)
+        self.brand = brand
+        self.user_id = user_id
+        self.assets = brand_assets.get(brand, {
+            'logo': '',
+            'logo_white': '',
+            'website': '#',
+            'customer_service': '#',
+            'support_email': '',
+            'color_primary': '#000000',
+            'color_secondary': '#FFFFFF',
+            'font_headline': 'Arial, sans-serif',
+            'font_body': 'Arial, sans-serif'
+        })
+
+        self.item = TextInput(label="Item name", style=discord.TextStyle.short, required=True, max_length=100)
+        self.price = TextInput(label="Price in USD", style=discord.TextStyle.short, required=True, max_length=20)
+        self.shipping_date = TextInput(label="Estimated delivery date", style=discord.TextStyle.short, required=True, max_length=30)
+
+        self.add_item(self.item)
+        self.add_item(self.price)
+        self.add_item(self.shipping_date)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # IMMEDIATELY defer to prevent timeout
+        await interaction.response.defer(ephemeral=True)
+        
+        email = user_emails.get(self.user_id)
+        if not email:
+            await interaction.followup.send(embed=Embed(title="Error", description="Email not found. Run /setup again.", color=Colour.red()), ephemeral=True)
+            return
+        
+        try:
+            price = float(self.price.value.strip())
+            
+            # Send processing message immediately
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Processing...", 
+                    description=f"⏳ Your receipt is being generated.", 
+                    color=Colour.blue()
+                ), 
+                ephemeral=True
+            )
+            
+            # Send email in background
+            asyncio.create_task(self.send_receipt(
+                interaction, email, 
+                self.item.value, price,
+                self.shipping_date.value
+            ))
+            
+        except ValueError:
+            await interaction.followup.send(embed=Embed(title="Error", description="Please enter a valid price number.", color=Colour.red()), ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
+
+    async def send_receipt(self, interaction, email, item_name, price, est_date):
+        try:
+            qty = 1
+            customer_name = random.choice(FAKE_NAMES)
+            address = random.choice(FAKE_ADDRESSES)
+            state = get_state_from_address(address)
+            tax_rate = STATE_TAX_RATES.get(state, 0.0749)
+
+            subtotal = price * qty
+            delivery = round(random.uniform(8, 15), 2)
+            sales_tax = round(subtotal * tax_rate, 2)
+            total = round(subtotal + delivery + sales_tax, 2)
+
+            order_id = f"{self.brand[:3].upper()}-{random.randint(100000, 999999)}"
+            payment = random.choice(FAKE_PAYMENT_METHODS)
+
+            html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: '{self.assets['font_body']}'; background: #f5f5f5; margin: 0; padding: 20px; }}
+                    .container {{ max-width: 600px; margin: 0 auto; background: white; }}
+                    .header {{ background: {self.assets['color_primary']}; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; }}
+                    .footer {{ background: #f5f5f5; padding: 15px; text-align: center; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>{self.brand}</h1>
+                    </div>
+                    <div class="content">
+                        <h2>Order Confirmation</h2>
+                        <p>Thank you for your order, {customer_name}!</p>
+                        
+                        <p><strong>Order #:</strong> {order_id}</p>
+                        <p><strong>Item:</strong> {item_name}</p>
+                        <p><strong>Price:</strong> ${price:,.2f}</p>
+                        <p><strong>Shipping:</strong> ${delivery:,.2f}</p>
+                        <p><strong>Tax:</strong> ${sales_tax:,.2f}</p>
+                        <p><strong>Total:</strong> ${total:,.2f}</p>
+                        
+                        <p><strong>Shipping to:</strong><br>{address}</p>
+                        <p><strong>Estimated delivery:</strong> {est_date}</p>
+                    </div>
+                    <div class="footer">
+                        <p><a href="{self.assets['website']}">Visit our website</a> | <a href="{self.assets['customer_service']}">Contact Us</a></p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            message = Mail(
+                from_email=(SENDER_EMAIL, self.brand),
+                to_emails=email,
+                subject=f"Your {self.brand} Order #{order_id}",
+                html_content=html_body
+            )
+
+            sg = SendGridAPIClient(SENDGRID_API_KEY)
+            sg.send(message)
+            
+            await interaction.followup.send(
+                embed=Embed(
+                    title="Success!", 
+                    description=f"✅ {self.brand} receipt sent!", 
+                    color=Colour.green()
+                ), 
+                ephemeral=True
+            )
+            
+        except Exception as e:
+            await interaction.followup.send(embed=Embed(title="Error", description=str(e), color=Colour.red()), ephemeral=True)
 
 # Run the bot
 client.run(BOT_TOKEN)
